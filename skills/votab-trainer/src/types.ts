@@ -91,3 +91,9 @@ export interface VocabRemoveResponse {
 }
 
 export interface VocabWordDetailResponse extends Word {}
+
+export interface EnrichResult {
+  prototype: string;
+  variant: string;
+  etymology: string;
+}
