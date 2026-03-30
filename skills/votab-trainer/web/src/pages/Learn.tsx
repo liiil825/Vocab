@@ -1,5 +1,10 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { postWord } from '../api';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import FadeIn from '../components/motion/FadeIn';
 
 export default function Learn() {
   const [word, setWord] = useState('');
@@ -13,97 +18,41 @@ export default function Learn() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!word.trim()) {
-      setError('请输入单词');
-      return;
-    }
-
-    const res = await postWord({
-      word: word.trim(),
-      meaning: meaning.trim(),
-      phonetic: phonetic.trim(),
-      pos: pos.trim(),
-      example: example.trim(),
-      example_cn: exampleCn.trim(),
-      source: 'user'
-    });
-
+    if (!word.trim()) { setError('请输入单词'); return; }
+    const res = await postWord({ word: word.trim(), meaning: meaning.trim(), phonetic: phonetic.trim(), pos: pos.trim(), example: example.trim(), example_cn: exampleCn.trim(), source: 'user' });
     setResult(res);
     if (res.success) {
-      setWord('');
-      setMeaning('');
-      setPhonetic('');
-      setPos('');
-      setExample('');
-      setExampleCn('');
+      setWord(''); setMeaning(''); setPhonetic(''); setPos(''); setExample(''); setExampleCn('');
+      setError('');
     } else {
       setError(res.message);
     }
   };
 
   return (
-    <div>
-      <h2>添加新单词</h2>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div>
-          <label>单词 *</label><br />
-          <input
-            type="text"
-            value={word}
-            onChange={e => setWord(e.target.value)}
-            style={{ width: '100%', padding: '8px' }}
-          />
-        </div>
-        <div>
-          <label>含义</label><br />
-          <input
-            type="text"
-            value={meaning}
-            onChange={e => setMeaning(e.target.value)}
-            style={{ width: '100%', padding: '8px' }}
-          />
-        </div>
-        <div>
-          <label>音标</label><br />
-          <input
-            type="text"
-            value={phonetic}
-            onChange={e => setPhonetic(e.target.value)}
-            style={{ width: '100%', padding: '8px' }}
-          />
-        </div>
-        <div>
-          <label>词性</label><br />
-          <input
-            type="text"
-            value={pos}
-            onChange={e => setPos(e.target.value)}
-            placeholder="如: n., v., adj."
-            style={{ width: '100%', padding: '8px' }}
-          />
-        </div>
-        <div>
-          <label>例句</label><br />
-          <textarea
-            value={example}
-            onChange={e => setExample(e.target.value)}
-            style={{ width: '100%', padding: '8px' }}
-          />
-        </div>
-        <div>
-          <label>例句中文</label><br />
-          <textarea
-            value={exampleCn}
-            onChange={e => setExampleCn(e.target.value)}
-            style={{ width: '100%', padding: '8px' }}
-          />
-        </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        {result?.success && <p style={{ color: 'green' }}>{result.message}</p>}
-        <button type="submit" style={{ padding: '10px', cursor: 'pointer' }}>
-          添加
-        </button>
-      </form>
+    <div className='max-w-xl mx-auto'>
+      <FadeIn>
+        <h1 className='text-2xl font-bold text-text-primary tracking-tight mb-2'>添加新单词</h1>
+        <p className='text-text-secondary mb-6 text-sm'>建立你的个人词库</p>
+      </FadeIn>
+
+      <FadeIn delay={0.05}>
+        <Card hover={false}>
+          <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
+            <Input label='单词 *' value={word} onChange={e => setWord(e.target.value)} placeholder='输入英文单词' />
+            <Input label='含义' value={meaning} onChange={e => setMeaning(e.target.value)} placeholder='中文释义（可选）' />
+            <Input label='音标' value={phonetic} onChange={e => setPhonetic(e.target.value)} placeholder='/fəˈnetɪk/' />
+            <Input label='词性' value={pos} onChange={e => setPos(e.target.value)} placeholder='n. v. adj. adv.' />
+            <Input label='例句' value={example} onChange={e => setExample(e.target.value)} placeholder='English sentence...' multiline rows={2} />
+            <Input label='例句中文' value={exampleCn} onChange={e => setExampleCn(e.target.value)} placeholder='例句翻译...' multiline rows={2} />
+
+            {error && <p className='text-danger text-sm'>{error}</p>}
+            {result?.success && <p className='text-success text-sm'>{result.message}</p>}
+
+            <Button type='submit' className='w-full mt-2'>添加单词</Button>
+          </form>
+        </Card>
+      </FadeIn>
     </div>
   );
 }
