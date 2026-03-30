@@ -1,111 +1,88 @@
 import { useState, useEffect } from 'react';
-import { getWords, deleteWord, WordSummary } from '../api';
+import { getWords, deleteWord } from '../api';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import FadeIn from '../components/motion/FadeIn';
+
+type WordItem = { word: string; meaning: string; level: number; next_review: string; error_count: number };
 
 const FILTERS = [
-  { value: 'all', label: '全部' },
-  { value: 'new', label: '新词' },
-  { value: 'learning', label: '学习中' },
-  { value: 'hard', label: '困难' },
-  { value: 'mastered', label: '已掌握' },
-  { value: 'today', label: '今日' }
+  { key: 'all', label: '全部' },
+  { key: 'new', label: '新词' },
+  { key: 'learning', label: '学习中' },
+  { key: 'hard', label: '困难' },
+  { key: 'mastered', label: '已掌握' },
 ];
 
 export default function List() {
-  const [words, setWords] = useState<WordSummary[]>([]);
   const [filter, setFilter] = useState('all');
+  const [words, setWords] = useState<WordItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    getWords(filter === 'all' ? undefined : filter).then(data => {
-      setWords(data.words);
+    getWords(filter === 'all' ? undefined : filter).then((data: any) => {
+      setWords(data.words || []);
+      setTotal(data.total || 0);
       setLoading(false);
     });
   }, [filter]);
 
-  const handleDelete = async (word: string) => {
-    if (!confirm(`确定要删除 "${word}" 吗？`)) return;
-    await deleteWord(word);
-    setWords(words.filter(w => w.word !== word));
+  const handleDelete = async (w: string) => {
+    if (!confirm(`确定删除 "${w}"？`)) return;
+    await deleteWord(w);
+    setWords(prev => prev.filter(x => x.word !== w));
   };
 
   return (
-    <div>
-      <h2>单词列表</h2>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        {FILTERS.map(f => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: filter === f.value ? '#0066cc' : '#eee',
-              color: filter === f.value ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+    <div className='space-y-6'>
+      <FadeIn>
+        <h1 className='text-2xl font-bold text-text-primary tracking-tight'>单词列表</h1>
+        <p className='text-text-secondary text-sm mt-1'>共 {total} 个单词</p>
+      </FadeIn>
 
-      {loading ? (
-        <div>加载中...</div>
-      ) : (
-        <>
-          <p>共 {words.length} 个单词</p>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #ccc' }}>
-                <th style={{ textAlign: 'left', padding: '10px' }}>单词</th>
-                <th style={{ textAlign: 'left', padding: '10px' }}>含义</th>
-                <th style={{ textAlign: 'center', padding: '10px' }}>Level</th>
-                <th style={{ textAlign: 'center', padding: '10px' }}>下次复习</th>
-                <th style={{ textAlign: 'center', padding: '10px' }}>错误</th>
-                <th style={{ textAlign: 'center', padding: '10px' }}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {words.map(w => (
-                <tr key={w.word} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '10px' }}>{w.word}</td>
-                  <td style={{ padding: '10px', color: '#666' }}>{w.meaning}</td>
-                  <td style={{ textAlign: 'center', padding: '10px' }}>
-                    <span style={{
-                      backgroundColor: `hsl(${w.level * 30}, 70%, 50%)`,
-                      color: 'white',
-                      padding: '2px 8px',
-                      borderRadius: '10px',
-                      fontSize: '12px'
-                    }}>
-                      {w.level}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'center', padding: '10px' }}>{w.next_review}</td>
-                  <td style={{ textAlign: 'center', padding: '10px' }}>{w.error_count}</td>
-                  <td style={{ textAlign: 'center', padding: '10px' }}>
-                    <button
-                      onClick={() => handleDelete(w.word)}
-                      style={{
-                        backgroundColor: '#ff4444',
-                        color: 'white',
-                        border: 'none',
-                        padding: '4px 10px',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      删除
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
+      {/* Filter Tabs */}
+      <FadeIn delay={0.05}>
+        <div className='flex gap-1 border-b border-border'>
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-4 py-2 text-sm font-medium transition-colors duration-200 border-b-2 -mb-px ${
+                filter === f.key ? 'text-accent border-accent' : 'text-text-secondary border-transparent hover:text-text-primary'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </FadeIn>
+
+      {/* Word List */}
+      <div className='space-y-2'>
+        {loading ? (
+          <FadeIn><Card hover={false} className='text-center py-12 text-text-secondary'>加载中...</Card></FadeIn>
+        ) : words.length === 0 ? (
+          <FadeIn><Card hover={false} className='text-center py-12 text-text-secondary'>暂无单词</Card></FadeIn>
+        ) : (
+          words.map((w, i) => (
+            <FadeIn key={w.word} delay={i * 0.03}>
+              <Card hover={false} className='flex items-center justify-between py-3'>
+                <div className='flex items-center gap-3'>
+                  <span className='text-text-primary font-medium'>{w.word}</span>
+                  <span className='text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent'>Lv.{w.level}</span>
+                  {w.meaning && <span className='text-text-muted text-sm hidden sm:inline'>{w.meaning.slice(0, 30)}{w.meaning.length > 30 ? '...' : ''}</span>}
+                </div>
+                <div className='flex items-center gap-3'>
+                  <span className='text-text-muted text-xs'>{w.next_review}</span>
+                  <button onClick={() => handleDelete(w.word)} className='text-text-muted hover:text-danger text-sm transition-colors'>删除</button>
+                </div>
+              </Card>
+            </FadeIn>
+          ))
+        )}
+      </div>
     </div>
   );
 }
