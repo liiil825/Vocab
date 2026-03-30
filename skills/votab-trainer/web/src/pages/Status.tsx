@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { getStatus, Status } from '../api';
+import { getStatus, Status as StatusData } from '../api';
 
 export default function Status() {
-  const [status, setStatus] = useState<Status | null>(null);
+  const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
