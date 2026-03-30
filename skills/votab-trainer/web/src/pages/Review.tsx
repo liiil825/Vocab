@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getReview, postFeedback } from '../api';
+import { getReview, postFeedback, getWordEnrich, type EnrichData } from '../api';
 
 type WordDetail = {
   word: string;
@@ -37,6 +37,8 @@ export default function Review() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [result, setResult] = useState<FeedbackResult | null>(null);
+  const [enrichedData, setEnrichedData] = useState<Record<string, EnrichData>>({});
+  const [enrichLoading, setEnrichLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +47,22 @@ export default function Review() {
       setLoading(false);
     });
   }, []);
+
+  const enrichCurrentWord = (word: string) => {
+    setEnrichLoading(true);
+    getWordEnrich(word)
+      .then(data => {
+        if (!data.error) {
+          setEnrichedData(prev => ({ ...prev, [word]: data }));
+        }
+      })
+      .catch(() => {
+        // Silently fail - enrich is best-effort
+      })
+      .finally(() => {
+        setEnrichLoading(false);
+      });
+  };
 
   const handleFeedback = (feedback: 'pass' | 'fail' | 'fuzzy') => {
     if (currentIndex >= words.length) return;
@@ -105,10 +123,38 @@ export default function Review() {
               <p><strong>例句:</strong> {currentWord.example}</p>
             )}
             {currentWord.example_cn && <p>{currentWord.example_cn}</p>}
+            {enrichLoading && <p><em style={{color: '#888'}}>正在获取扩展信息...</em></p>}
+            {!enrichLoading && enrichedData[currentWord.word] && (
+              <div style={{ marginTop: '16px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
+                {enrichedData[currentWord.word].prototype && (
+                  <details style={{ marginBottom: '8px' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>原型</summary>
+                    <p style={{ margin: '4px 0 0 16px', color: '#444' }}>{enrichedData[currentWord.word].prototype}</p>
+                  </details>
+                )}
+                {enrichedData[currentWord.word].variant && (
+                  <details style={{ marginBottom: '8px' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>变体</summary>
+                    <p style={{ margin: '4px 0 0 16px', color: '#444' }}>{enrichedData[currentWord.word].variant}</p>
+                  </details>
+                )}
+                {enrichedData[currentWord.word].etymology && (
+                  <details style={{ marginBottom: '8px' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>词源词根</summary>
+                    <p style={{ margin: '4px 0 0 16px', color: '#444' }}>{enrichedData[currentWord.word].etymology}</p>
+                  </details>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <button
-            onClick={() => setShowAnswer(true)}
+            onClick={() => {
+              setShowAnswer(true);
+              if (!enrichedData[currentWord.word]) {
+                enrichCurrentWord(currentWord.word);
+              }
+            }}
             style={{
               padding: '10px 30px',
               fontSize: '16px',
