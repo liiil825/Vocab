@@ -1,4 +1,4 @@
-const API = "http://localhost:3099/api";
+const API = import.meta.env.VITE_API_URL || "http://localhost:3099/api";
 
 export type WordSummary = {
   word: string;
@@ -64,3 +64,13 @@ export const postWord = (word: Omit<WordDetail, 'level' | 'next_review' | 'inter
   body: JSON.stringify(word)
 }).then(r => r.json());
 export const deleteWord = (word: string) => fetch(`${API}/words/${encodeURIComponent(word)}`, { method: "DELETE" }).then(r => r.json());
+
+export type EnrichData = {
+  word: string;
+  prototype: string;
+  variant: string;
+  etymology: string;
+}
+
+export const getWordEnrich = (word: string): Promise<EnrichData> =>
+  fetch(`${API}/words/${encodeURIComponent(word)}/enrich`).then(r => r.json());
