@@ -8,6 +8,18 @@ function getDataPath(): string {
 
 let db: Database | null = null;
 
+/**
+ * Close the cached database connection.
+ * This is primarily used for testing to allow resetTestData() to
+ * recreate the database file without stale connection issues.
+ */
+export function closeDb(): void {
+  if (db) {
+    db.close();
+    db = null;
+  }
+}
+
 function getDb(): Database {
   if (db) return db;
 
@@ -43,7 +55,10 @@ function getDb(): Database {
       interval_days INTEGER DEFAULT 1,
       error_count INTEGER DEFAULT 0,
       review_count INTEGER DEFAULT 0,
-      history TEXT DEFAULT '[]'
+      history TEXT DEFAULT '[]',
+      prototype TEXT DEFAULT '',
+      variant TEXT DEFAULT '',
+      etymology TEXT DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS stats (
@@ -58,6 +73,15 @@ function getDb(): Database {
     CREATE INDEX IF NOT EXISTS idx_words_next_review ON words(next_review);
     CREATE INDEX IF NOT EXISTS idx_words_level ON words(level);
   `);
+
+  // Migrate existing rows: add new columns if not exist (for existing DBs)
+  try {
+    db.exec("ALTER TABLE words ADD COLUMN prototype TEXT DEFAULT ''");
+    db.exec("ALTER TABLE words ADD COLUMN variant TEXT DEFAULT ''");
+    db.exec("ALTER TABLE words ADD COLUMN etymology TEXT DEFAULT ''");
+  } catch {
+    // Columns may already exist
+  }
 
   // Ensure stats row exists
   const stats = db.query("SELECT * FROM stats WHERE id = 1").get();
@@ -83,7 +107,10 @@ function rowToWord(row: any): Word {
     interval_days: row.interval_days,
     error_count: row.error_count,
     review_count: row.review_count,
-    history: JSON.parse(row.history || "[]") as ReviewRecord[]
+    history: JSON.parse(row.history || "[]") as ReviewRecord[],
+    prototype: row.prototype || "",
+    variant: row.variant || "",
+    etymology: row.etymology || ""
   };
 }
 
@@ -115,8 +142,8 @@ export function addWord(word: Word): void {
   const database = getDb();
 
   database.query(`
-    INSERT INTO words (word, word_lower, meaning, phonetic, pos, example, example_cn, source, added, level, next_review, interval_days, error_count, review_count, history)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO words (word, word_lower, meaning, phonetic, pos, example, example_cn, source, added, level, next_review, interval_days, error_count, review_count, history, prototype, variant, etymology)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     word.word,
     word.word.toLowerCase(),
@@ -132,7 +159,10 @@ export function addWord(word: Word): void {
     word.interval_days,
     word.error_count,
     word.review_count,
-    JSON.stringify(word.history)
+    JSON.stringify(word.history),
+    word.prototype || "",
+    word.variant || "",
+    word.etymology || ""
   );
 }
 
@@ -157,7 +187,8 @@ export function updateWord(word: string, updates: Partial<Word>): Word | undefin
     UPDATE words SET
       word = ?, word_lower = ?, meaning = ?, phonetic = ?, pos = ?,
       example = ?, example_cn = ?, source = ?, added = ?, level = ?,
-      next_review = ?, interval_days = ?, error_count = ?, review_count = ?, history = ?
+      next_review = ?, interval_days = ?, error_count = ?, review_count = ?, history = ?,
+      prototype = ?, variant = ?, etymology = ?
     WHERE word_lower = ?
   `).run(
     updated.word,
@@ -175,6 +206,9 @@ export function updateWord(word: string, updates: Partial<Word>): Word | undefin
     updated.error_count,
     updated.review_count,
     JSON.stringify(updated.history),
+    updated.prototype || "",
+    updated.variant || "",
+    updated.etymology || "",
     wordLower
   );
 
@@ -234,4 +268,12 @@ export function updateStats(streak: number, lastReviewDate: string): void {
     UPDATE stats SET streak = ?, last_review_date = ?, total_reviews = total_reviews + 1
     WHERE id = 1
   `).run(streak, lastReviewDate);
+}
+
+export function updateWordEnrich(word: string, enrich: { prototype: string; variant: string; etymology: string }): void {
+  const database = getDb();
+  database.query(`
+    UPDATE words SET prototype = ?, variant = ?, etymology = ?
+    WHERE word_lower = ?
+  `).run(enrich.prototype, enrich.variant, enrich.etymology, word.toLowerCase());
 }

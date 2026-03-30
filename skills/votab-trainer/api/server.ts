@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { loadData, addWord, getWord, removeWord, getWordsByFilter, getDueWords } from "../dist/storage.js";
+import { loadData, addWord, getWord, removeWord, getWordsByFilter, getDueWords, updateWordEnrich } from "../dist/storage.js";
 import { processReviewFeedbacks, getToday, addDays } from "../dist/algorithm.js";
 import { Word } from "../dist/types.js";
 import { enrichWord } from "../dist/llm.js";
@@ -111,7 +111,10 @@ app.post("/api/words", async (c) => {
     interval_days: 1,
     error_count: 0,
     review_count: 0,
-    history: []
+    history: [],
+    prototype: "",
+    variant: "",
+    etymology: ""
   };
 
   addWord(newWord);
@@ -148,12 +151,32 @@ app.get("/api/words/:word", (c) => {
 
 app.get("/api/words/:word/enrich", async (c) => {
   const word = c.req.param("word");
+  const existing = getWord(word);
 
-  try {
-    const enrich = await enrichWord(word);
+  // If word exists in DB and has all enrich fields, return from DB
+  if (existing && existing.prototype && existing.variant && existing.etymology) {
     return c.json({
       word,
-      ...enrich
+      prototype: existing.prototype,
+      variant: existing.variant,
+      etymology: existing.etymology,
+      cached: true
+    });
+  }
+
+  // Otherwise call LLM to get enrich data
+  try {
+    const enrich = await enrichWord(word);
+
+    // Save to DB if word exists
+    if (existing) {
+      updateWordEnrich(word, enrich);
+    }
+
+    return c.json({
+      word,
+      ...enrich,
+      cached: false
     });
   } catch (err) {
     console.error(`Failed to enrich word "${word}":`, err);

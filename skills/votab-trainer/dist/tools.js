@@ -62,7 +62,10 @@ function createTools() {
                     interval_days: 1,
                     error_count: 0,
                     review_count: 0,
-                    history: []
+                    history: [],
+                    prototype: "",
+                    variant: "",
+                    etymology: ""
                 };
                 addWord(newWord);
                 return {

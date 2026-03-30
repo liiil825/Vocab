@@ -1,7 +1,7 @@
 function getMinimaxConfig() {
-    const apiKey = process.env.MINIMAX_API_KEY;
-    const baseUrl = process.env.MINIMAX_BASE_URL || "https://api.minimax.chat";
-    const model = process.env.MINIMAX_MODEL || "abab6.5s-chat";
+    const apiKey = Bun.env.MINIMAX_API_KEY;
+    const baseUrl = Bun.env.MINIMAX_BASE_URL || "https://api.minimaxi.com";
+    const model = Bun.env.MINIMAX_MODEL || "MiniMax-M2.7";
     if (!apiKey) {
         throw new Error("MINIMAX_API_KEY environment variable is not set");
     }
@@ -21,7 +21,7 @@ export async function enrichWord(word) {
   "variant": "...",
   "etymology": "..."
 }`;
-    const response = await fetch(`${baseUrl}/v1/text/chatcompletion_pro?Model=${model}`, {
+    const response = await fetch(`${baseUrl}/v1/text/chatcompletion_v2`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -30,11 +30,9 @@ export async function enrichWord(word) {
         body: JSON.stringify({
             model,
             messages: [
-                { role: "system", content: "你是一个专业的英语词汇分析助手。" },
-                { role: "user", content: prompt }
-            ],
-            temperature: 0.3,
-            stream: false
+                { role: "system", name: "MiniMax AI", content: "你是一个专业的英语词汇分析助手。" },
+                { role: "user", name: "用户", content: prompt }
+            ]
         })
     });
     if (!response.ok) {
@@ -42,9 +40,10 @@ export async function enrichWord(word) {
         throw new Error(`MiniMax API error: ${response.status} ${errorText}`);
     }
     const data = await response.json();
-    const content = data.choices?.[0]?.messages?.[0]?.text;
+    // MiniMax-M2.7 returns: { choices: [{ message: { content: "..." } }] }
+    const content = data.choices?.[0]?.message?.content;
     if (!content) {
-        throw new Error("MiniMax API returned no content");
+        throw new Error(`MiniMax API returned no content: ${JSON.stringify(data).slice(0, 200)}`);
     }
     // Parse JSON from response
     // The model might wrap the JSON in markdown code blocks

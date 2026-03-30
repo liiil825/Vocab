@@ -17,6 +17,9 @@ export interface Word {
     error_count: number;
     review_count: number;
     history: ReviewRecord[];
+    prototype: string;
+    variant: string;
+    etymology: string;
 }
 export interface VocabData {
     version: number;
@@ -78,4 +81,9 @@ export interface VocabRemoveResponse {
     message: string;
 }
 export interface VocabWordDetailResponse extends Word {
+}
+export interface EnrichResult {
+    prototype: string;
+    variant: string;
+    etymology: string;
 }

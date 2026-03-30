@@ -18,6 +18,9 @@ export interface Word {
   error_count: number;
   review_count: number;
   history: ReviewRecord[];
+  prototype: string;
+  variant: string;
+  etymology: string;
 }
 
 export interface VocabData {
