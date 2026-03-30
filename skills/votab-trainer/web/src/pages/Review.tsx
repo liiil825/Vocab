@@ -1,5 +1,35 @@
 import { useState, useEffect } from 'react';
-import { getReview, postFeedback, FeedbackItem, WordDetail, FeedbackResult } from '../api';
+import { getReview, postFeedback } from '../api';
+
+type WordDetail = {
+  word: string;
+  meaning: string;
+  phonetic: string;
+  pos: string;
+  example: string;
+  example_cn: string;
+  source: string;
+  added: string;
+  level: number;
+  next_review: string;
+  interval_days: number;
+  error_count: number;
+  review_count: number;
+  history: { date: string; result: string }[];
+};
+
+type FeedbackItem = {
+  word: string;
+  feedback: "pass" | "fail" | "fuzzy";
+};
+
+type FeedbackResult = {
+  success: boolean;
+  results: { word: string; old_level: number; new_level: number; next_review: string; interval_days: number }[];
+  summary: { passed: number; failed: number; fuzzy: number };
+  updated_streak: number;
+  message: string;
+};
 
 export default function Review() {
   const [words, setWords] = useState<WordDetail[]>([]);
@@ -64,7 +94,11 @@ export default function Review() {
         <h2 style={{ fontSize: '32px', marginBottom: '20px' }}>{currentWord.word}</h2>
         {showAnswer ? (
           <div style={{ textAlign: 'left' }}>
-            <p><strong>含义:</strong> {currentWord.meaning}</p>
+            {currentWord.meaning ? (
+  <p><strong>含义:</strong> {currentWord.meaning}</p>
+) : (
+  <p><strong>含义:</strong> <em style={{color: '#888'}}>暂无解释，请参考下方扩展信息</em></p>
+)}
             {currentWord.phonetic && <p><strong>音标:</strong> {currentWord.phonetic}</p>}
             {currentWord.pos && <p><strong>词性:</strong> {currentWord.pos}</p>}
             {currentWord.example && (
