@@ -9,7 +9,10 @@
     "start": "bun run dist/index.js",
     "test": "bun run tests/run-all.mjs",
     "test:unit": "bun run tests/run-all.mjs unit",
-    "test:integration": "bun run tests/run-all.mjs integration"
+    "test:integration": "bun run tests/run-all.mjs integration",
+    "api": "bun run api/server.ts",
+    "dev:web": "cd web && bun run dev --host",
+    "dev": "bun run api & bun run dev:web"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
