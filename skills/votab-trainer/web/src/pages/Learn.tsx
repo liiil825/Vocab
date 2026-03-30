@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { postWord } from '../api';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
@@ -49,7 +48,7 @@ export default function Learn() {
             {error && <p className='text-danger text-sm'>{error}</p>}
             {result?.success && <p className='text-success text-sm'>{result.message}</p>}
 
-            <Button type='submit' className='w-full mt-2'>添加单词</Button>
+            <Button className='w-full mt-2'>添加单词</Button>
           </form>
         </Card>
       </FadeIn>

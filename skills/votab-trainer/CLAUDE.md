@@ -12,12 +12,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 bun run build          # Compile TypeScript to dist/
 bun run start          # Run MCP server (bun run dist/index.js)
 bun run api            # Run HTTP API server (bun run api/server.ts)
-bun run dev:web        # Run React frontend dev server
+bun run dev:web        # Run React frontend dev server (LAN: bun run dev:web --host)
 bun run dev            # Run both API and web dev servers
 bun run test           # Run all tests (unit + integration)
-bun run test:unit       # Unit tests only
+bun run test:unit      # Unit tests only
 bun run test:integration # Integration tests only
 ```
+
+## LAN Access
+
+For access from other devices on the LAN, set `VITE_API_URL` in `web/.env`:
+
+```
+VITE_API_URL=http://192.168.0.105:3099/api
+```
+
+The API server and Vite dev server both bind to `0.0.0.0` (all network interfaces).
 
 ## Architecture
 

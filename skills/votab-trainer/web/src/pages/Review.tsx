@@ -53,9 +53,7 @@ export default function Review() {
     setEnrichLoading(true);
     getWordEnrich(word)
       .then((data: EnrichData) => {
-        if (!data.error) {
-          setEnrichedData(prev => ({ ...prev, [word]: data }));
-        }
+        setEnrichedData(prev => ({ ...prev, [word]: data }));
       })
       .catch(() => {})
       .finally(() => setEnrichLoading(false));

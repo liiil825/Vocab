@@ -1,5 +1,5 @@
 import { Word, ReviewResult, ReviewSummary, FeedbackItem } from "./types.js";
-import { loadData, saveData } from "./storage.js";
+import { loadData, saveData, updateWord } from "./storage.js";
 
 const INTERVALS = [1, 2, 4, 7, 15, 30]; // level 0-5 对应间隔
 
@@ -67,6 +67,9 @@ export function processReviewFeedbacks(feedbacks: FeedbackItem[]): {
     existingWord.review_count += 1;
     if (feedback === "fail") existingWord.error_count += 1;
     existingWord.history.push(historyEntry);
+
+    // 持久化单词更新到数据库
+    updateWord(word, existingWord);
 
     results.push({
       word,

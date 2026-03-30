@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vocab-trainer": {
+      "command": "node /home/david/.openclaw/workspace-english-teacher/skills/votab-trainer/dist/index.js"
+    }
+  },
+  "imports": []
+}

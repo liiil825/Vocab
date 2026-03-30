@@ -191,5 +191,6 @@ console.log("Starting Vocab-Trainer API server on http://0.0.0.0:3099");
 export default {
   port: 3099,
   hostname: "0.0.0.0",
-  fetch: app.fetch
+  fetch: app.fetch,
+  idleTimeout: 60
 };

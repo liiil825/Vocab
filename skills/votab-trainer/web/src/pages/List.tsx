@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getWords, deleteWord } from '../api';
 import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
 import FadeIn from '../components/motion/FadeIn';
 
 type WordItem = { word: string; meaning: string; level: number; next_review: string; error_count: number };
