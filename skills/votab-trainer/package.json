@@ -1,0 +1,22 @@
+{
+  "name": "vocab-trainer",
+  "version": "1.0.0",
+  "description": "Vocab-Trainer MCP Server with Spaced Repetition",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "bun run dist/index.js",
+    "test": "bun run tests/run-all.mjs",
+    "test:unit": "bun run tests/run-all.mjs unit",
+    "test:integration": "bun run tests/run-all.mjs integration"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

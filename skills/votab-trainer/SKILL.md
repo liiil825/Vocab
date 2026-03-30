@@ -10,8 +10,51 @@ description: |
   5. `/vocab list [all|new|hard|mastered]` — 按状态筛选查看单词
   6. `/vocab remove <单词>` — 从词库移除
 
-  所有单词数据持久化存储在 `~/.vocab-trainer/words.json`。
-  每次会话开始时读取该文件，复习/添加后立即更新。
+  ⚠️ 本技能通过 MCP 工具调用 Vocab-Trainer 服务器，禁止直接读写 words.json。
+---
+
+# ⚙️ MCP 工具（必须使用）
+
+本技能依赖 Vocab-Trainer MCP 服务器。**所有 `/vocab` 指令必须通过 MCP 工具执行，禁止直接读写 words.json。**
+
+## 启动 MCP（如未运行）
+
+```bash
+mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-english-teacher/skills/votab-trainer/dist/index.js"
+mcporter list  # 验证 vocab-trainer 已注册且 healthy
+```
+
+如果 `mcporter list` 显示没有 servers，需要先添加：
+```bash
+mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-english-teacher/skills/votab-trainer/dist/index.js"
+```
+
+## MCP 工具列表
+
+| 工具 | 功能 |
+|------|------|
+| `vocab_review` | 获取今日待复习单词列表 |
+| `vocab_review_feedback` | 提交复习反馈（pass/fail/fuzzy），更新单词 level 和下次复习时间 |
+| `vocab_add_word` | 添加新词到词库 |
+| `vocab_get_status` | 获取词库整体状态（统计、各等级数量、streak 等） |
+| `vocab_list_words` | 列出单词（支持按 level 筛选） |
+| `vocab_remove_word` | 从词库移除单词 |
+| `vocab_get_word_detail` | 获取单词详情（用于 learn 模式展示完整卡片） |
+
+## 执行流程
+
+```
+用户输入 /vocab xxx
+  → 调用对应的 MCP 工具（如 vocab_review）
+  → MCP 服务器读写 ~/.vocab-trainer/words.json
+  → 返回结构化结果
+  → 大模型渲染展示给用户
+  → 用户反馈后调用 vocab_review_feedback 更新
+  → 完成
+```
+
+**禁止**：直接用 read/edit 工具读写 words.json。
+
 ---
 
 # 背单词技能 — 艾宾浩斯间隔重复系统
@@ -300,8 +343,12 @@ description: |
 
 1. 解析用户输入，提取要学习的单词（支持逗号分隔多个）
 2. 对每个单词，查询并展示完整学习卡片
-3. 学习结束后自动加入复习队列（如果尚未存在）
-4. 如果词库中已存在该词，仍展示学习卡片并提示当前掌握状态
+3. **关键步骤：** 学习结束后，调用 `vocab_add_word` 检查词是否已存在
+4. 根据检查结果显示不同的确认信息：
+   - **vocab_add_word 返回 success=true（新词）** → "✅ 已加入复习队列，首次复习：明天"
+   - **vocab_add_word 返回 success=false（已存在，且 meaning 非空）** → "⚠️ 该词已在词库中（level X），下次复习：明天"
+   - **vocab_add_word 返回 success=false（已存在，但 meaning 为空）** → "✅ 已加入复习队列，首次复习：明天"（信息不完整，当新词处理）
+5. 如果词库中已存在该词，仍展示学习卡片并根据 level 显示不同提示
 
 **输出格式（单个词）：**
 
@@ -342,7 +389,10 @@ description: |
   🔄 近义词：transient, fleeting, momentary
   🔄 反义词：permanent, enduring, everlasting
 
-  ✅ 已自动加入复习队列，首次复习：明天 (2026-03-25)
+  <!-- 末尾根据 vocab_add_word 结果显示以下之一 -->
+  <!-- 新词（success=true）：✅ 已加入复习队列，首次复习：明天 -->
+  <!-- 已有词（success=false, meaning 非空）：⚠️ 该词已在词库中（level X），下次复习：明天 -->
+  <!-- 已有词（success=false, meaning 为空）：✅ 已加入复习队列，首次复习：明天 -->
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -378,10 +428,14 @@ description: |
 
   ✅ 全部学习完成，3 词已加入复习队列
 
-  📅 首次复习：明天 (2026-03-25)
+  <!-- 末尾根据各词的 vocab_add_word 结果汇总显示 -->
+  <!-- 新词：✅ 已加入复习队列 -->
+  <!-- 已有词：⚠️ 该词已在词库中，跳过 -->
 ```
 
 **已存在词库中的词：**
+
+当 `vocab_add_word` 返回 `success=false` 且 `meaning` 非空时，表示该词之前已添加过且有完整信息，应显示：
 
 ```
 📖 学习卡片
@@ -570,22 +624,6 @@ description: |
 
 ---
 
-## MCP 工具调用
-
-重构后的 vocab-trainer 提供 MCP 服务器，大模型通过以下 MCP 工具执行实际操作：
-
-### MCP 工具列表
-
-| 工具 | 功能 |
-|------|------|
-| `vocab_review` | 获取今日待复习的单词列表 |
-| `vocab_add_word` | 添加新词到词库 |
-| `vocab_review_feedback` | 提交复习反馈，更新单词状态（支持批量） |
-| `vocab_get_status` | 获取词库整体状态 |
-| `vocab_list_words` | 列出单词（支持筛选） |
-| `vocab_remove_word` | 从词库移除单词 |
-| `vocab_get_word_detail` | 获取单词详情（用于学习模式） |
-
 ### 复习流程 (/vocab review)
 
 1. 调用 `vocab_review` 获取今日待复习单词列表
@@ -602,11 +640,3 @@ description: |
 
 1. 调用 `vocab_get_status` 获取统计数据
 2. 大模型渲染为友好的表格展示
-
-### MCP 服务器启动
-
-```bash
-cd vocab-trainer && npm run start
-```
-
-服务器通过 STDIO 与大模型通信。

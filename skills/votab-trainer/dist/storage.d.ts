@@ -1,0 +1,10 @@
+import { VocabData, Word } from "./types.js";
+export declare function loadData(): VocabData;
+export declare function saveData(data: VocabData): void;
+export declare function addWord(word: Word): void;
+export declare function getWord(word: string): Word | undefined;
+export declare function updateWord(word: string, updates: Partial<Word>): Word | undefined;
+export declare function removeWord(word: string): boolean;
+export declare function getWordsByFilter(filter?: string): Word[];
+export declare function getDueWords(): Word[];
+export declare function updateStats(streak: number, lastReviewDate: string): void;
