@@ -1,9 +1,17 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { loadData, addWord, getWord, removeWord, getWordsByFilter, getDueWords } from "../dist/storage.js";
 import { processReviewFeedbacks, getToday, addDays } from "../dist/algorithm.js";
 import { Word } from "../dist/types.js";
+import { enrichWord } from "../dist/llm.js";
 
 const app = new Hono();
+
+app.use("*", cors({
+  origin: "*",
+  allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type"]
+}));
 
 function groupByLevel(words: Word[]): Record<number, number> {
   const stats: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -138,8 +146,27 @@ app.get("/api/words/:word", (c) => {
   return c.json(result);
 });
 
-console.log("Starting Vocab-Trainer API server on http://localhost:3099");
+app.get("/api/words/:word/enrich", async (c) => {
+  const word = c.req.param("word");
+
+  try {
+    const enrich = await enrichWord(word);
+    return c.json({
+      word,
+      ...enrich
+    });
+  } catch (err) {
+    console.error(`Failed to enrich word "${word}":`, err);
+    return c.json({
+      error: "Failed to enrich word",
+      details: err instanceof Error ? err.message : String(err)
+    }, 500);
+  }
+});
+
+console.log("Starting Vocab-Trainer API server on http://0.0.0.0:3099");
 export default {
   port: 3099,
+  hostname: "0.0.0.0",
   fetch: app.fetch
 };
