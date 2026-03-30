@@ -1,6 +1,6 @@
 const API = "http://localhost:3099/api";
 
-export interface WordSummary {
+export type WordSummary = {
   word: string;
   meaning: string;
   level: number;
@@ -8,7 +8,7 @@ export interface WordSummary {
   error_count: number;
 }
 
-export interface WordDetail extends WordSummary {
+export type WordDetail = WordSummary & {
   phonetic: string;
   pos: string;
   example: string;
@@ -20,7 +20,7 @@ export interface WordDetail extends WordSummary {
   history: { date: string; result: string }[];
 }
 
-export interface Status {
+export type Status = {
   total_words: number;
   level_stats: Record<number, number>;
   streak: number;
@@ -29,19 +29,19 @@ export interface Status {
   total_reviews: number;
 }
 
-export interface ReviewResponse {
+export type ReviewResponse = {
   words: WordDetail[];
   count: number;
   streak: number;
   last_review_date: string | null;
 }
 
-export interface FeedbackItem {
+export type FeedbackItem = {
   word: string;
   feedback: "pass" | "fail" | "fuzzy";
 }
 
-export interface FeedbackResult {
+export type FeedbackResult = {
   success: boolean;
   results: { word: string; old_level: number; new_level: number; next_review: string; interval_days: number }[];
   summary: { passed: number; failed: number; fuzzy: number };
