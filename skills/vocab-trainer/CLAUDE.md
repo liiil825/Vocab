@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 See [docs/architecture.md](docs/architecture.md) for full technical documentation including directory structure, storage design, data model, API endpoints, and MCP tools.
 
+See [docs/review-system.md](docs/review-system.md) for detailed review algorithm, feedback handling logic, and Status page API format.
+
 ## Commands
 
 ```bash
@@ -50,10 +52,11 @@ VITE_API_URL=http://192.168.0.105:3099/api
 
 ## Data Model
 
-- SQLite database `words.db` stores vocabulary with levels 0-5
-- Level progression: 0→1→2→3→4→5 with intervals [1,2,4,7,15,30] days
-- Feedback types: `pass` (advance), `fail` (reset to level 0), `fuzzy` (interval halved)
+- SQLite database `words.db` stores vocabulary with levels 0-9
+- Level progression: 0→1→2→3→4→5→6→7→8→9 with intervals [20min, 1hr, 4hr, 12hr, 1day, 2day, 7day, 15day, 30day, 60day]
+- Feedback types: `pass` (advance), `fail` (Level 0-3: reset to 0, Level 4+: keep level), `fuzzy` (interval halved)
 - Streak tracks consecutive review days
+- New words are immediately reviewable (no initial delay)
 
 ## MCP Tools
 
@@ -72,10 +75,11 @@ VITE_API_URL=http://192.168.0.105:3099/api
 See [docs/testing.md](docs/testing.md) for full test documentation including test structure, data isolation mechanism, and known test issues.
 
 **Test status** (2026-03-31):
-- Algorithm unit tests: 22 passed, 0 failed
+- Algorithm unit tests: 33 passed, 0 failed
 - Storage unit tests: 23 passed, 0 failed
-- MCP integration tests: 20 passed, 0 failed
-- Batch review integration tests: 37 passed, 0 failed
-- **Total: 102 passed, 0 failed**
+- Enrichment unit tests: 20 passed, 0 failed
+- MCP integration tests: 21 passed, 0 failed
+- Batch review integration tests: 41 passed, 0 failed
+- **Total: 138 passed, 0 failed**
 
 All tests passing as of 2026-03-31.

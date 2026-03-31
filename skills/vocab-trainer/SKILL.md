@@ -94,7 +94,8 @@ CREATE TABLE stats (
   version INTEGER DEFAULT 2,            -- schema version 2
   streak INTEGER DEFAULT 0,
   last_review_date TEXT,               -- ISO8601 datetime
-  total_reviews INTEGER DEFAULT 0
+  total_reviews INTEGER DEFAULT 0,
+  review_batch_time TEXT DEFAULT '08:30'
 );
 ```
 
@@ -146,7 +147,7 @@ CREATE TABLE stats (
 
 ```
 正确 (pass) → 推进到下一间隔
-错误 (fail) → 重置为 level 0，间隔 20 分钟
+错误 (fail) → Level 0-3: 重置到 level 0, 20分钟; Level 4+: 保持级别, 20分钟后重试
 模糊 (fuzzy) → 间隔 ÷3（最小 20 分钟），level 不变
 连续复习 (streak) → 24 小时内有复习即连续
 
@@ -179,8 +180,8 @@ CREATE TABLE stats (
    - 查询音标、词性、中文释义
    - 构造一条英文例句和中文翻译
    - 检查是否已存在（小写匹配），存在则跳过并提示
-   - 设置 `level=0`，`next_review=明天日期`，`interval_days=1`
-4. 追加写入 JSON 文件
+   - 设置 `level=0`，`next_review=立即可复习`，`interval_minutes=20`
+4. 追加写入数据库
 5. 输出确认信息
 
 **输出格式（单个词）：**
@@ -196,7 +197,7 @@ CREATE TABLE stats (
 | 释义 | 充满（不愉快事物）的 |
 | 例句 | The project is fraught with risks. |
 | 翻译 | 这个项目充满风险。 |
-| 首次复习 | 明天 (2026-03-25) |
+| 首次复习 | 立即可复习 |
 
 💡 当前词库共 47 词，今日待复习 5 词
 ```
@@ -304,11 +305,11 @@ CREATE TABLE stats (
 
 **用户反馈处理规则：**
 
-| 反馈      | level 变化  | interval 变化  | next_review      |
-| --------- | ----------- | -------------- | ---------------- |
-| ✅ 记住了 | +1 (最高 5) | 按间隔表推进   | today + interval |
-| ❌ 没记住 | -1 (最低 0) | 重置为 1       | tomorrow         |
-| ⏭️ 模糊   | 不变        | 减半（最小 1） | today + interval |
+| 反馈      | Level 0-3 变化       | Level 4+ 变化        | interval 变化        |
+| --------- | -------------------- | -------------------- | ------------------- |
+| ✅ 记住了 | +1 (最高 9)          | +1 (最高 9)          | 按间隔表推进         |
+| ❌ 没记住 | 重置为 level 0       | 保持级别不变         | 20 分钟              |
+| ⏭️ 模糊   | 不变                 | 不变                 | ÷3（最小 20 分钟）   |
 
 **无待复习词时的输出：**
 
@@ -516,7 +517,7 @@ CREATE TABLE stats (
 | `new`        | level = 0                    |
 | `learning`   | level 1-3                    |
 | `hard`       | level ≤ 1 且 error_count ≥ 1 |
-| `mastered`   | level = 5                    |
+| `mastered`   | level >= 8                   |
 | `today`      | next_review ≤ 今天           |
 
 **输出格式：**
