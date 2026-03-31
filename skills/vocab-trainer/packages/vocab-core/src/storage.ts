@@ -6,6 +6,16 @@ function getDataPath(): string {
     `${process.env.HOME}/.vocab-trainer/words.db`;
 }
 
+function safeJsonParse<T>(str: string | null | undefined, fallback: T): T {
+  if (!str) return fallback;
+  try {
+    return JSON.parse(str) as T;
+  } catch {
+    console.error(`Corrupted JSON data: ${str.substring(0, 100)}`);
+    return fallback;
+  }
+}
+
 function ensureDir(dbPath: string): void {
   const dir = dbPath.substring(0, dbPath.lastIndexOf('/'));
   if (dir) {
@@ -32,10 +42,10 @@ function rowToWord(row: any): Word {
     interval_minutes: row.interval_minutes,
     error_count: row.error_count,
     review_count: row.review_count,
-    history: JSON.parse(row.history || "[]") as ReviewRecord[],
-    prototype: JSON.parse(row.prototype || "[]") as EnrichItem[],
-    variant: JSON.parse(row.variant || "[]") as EnrichItem[],
-    etymology: JSON.parse(row.etymology || "[]") as EnrichItem[]
+    history: safeJsonParse(row.history, [] as ReviewRecord[]),
+    prototype: safeJsonParse(row.prototype, [] as EnrichItem[]),
+    variant: safeJsonParse(row.variant, [] as EnrichItem[]),
+    etymology: safeJsonParse(row.etymology, [] as EnrichItem[])
   };
 }
 
@@ -113,13 +123,14 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
   }
 
   // Migrate: interval_days -> interval_minutes if needed
+  const MINUTES_PER_DAY = 1440;
   try {
     const cols = db.query("PRAGMA table_info(words)").all() as any[];
     const hasIntervalDays = cols.some(c => c.name === 'interval_days');
     const hasIntervalMinutes = cols.some(c => c.name === 'interval_minutes');
     if (hasIntervalDays && !hasIntervalMinutes) {
       db.exec("ALTER TABLE words ADD COLUMN interval_minutes INTEGER");
-      db.exec("UPDATE words SET interval_minutes = interval_days * 1440 WHERE interval_minutes IS NULL");
+      db.exec(`UPDATE words SET interval_minutes = interval_days * ${MINUTES_PER_DAY} WHERE interval_minutes IS NULL`);
     }
   } catch {
     // Migration may have already been done
