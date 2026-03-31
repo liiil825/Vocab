@@ -5,6 +5,7 @@ import { playSound } from '../hooks/useSound';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import FadeIn from '../components/motion/FadeIn';
+import { useModal } from '../components/ui/Modal';
 
 type WordDetail = {
   word: string;
@@ -42,6 +43,7 @@ export default function Review() {
   const [loading, setLoading] = useState(true);
   const [enrichedData, setEnrichedData] = useState<Record<string, EnrichData>>({});
   const [enrichLoading, setEnrichLoading] = useState(false);
+  const { showConfirm } = useModal();
 
   useEffect(() => {
     getReview().then((data: any) => {
@@ -74,13 +76,26 @@ export default function Review() {
     }
   };
 
-  const handleEndReview = () => {
+  const handleEndReview = async () => {
     if (feedbacks.length === 0) {
-      alert('还没有复习任何单词');
+      await showConfirm({
+        title: '还没有复习',
+        message: '还没有复习任何单词，请先完成复习。',
+        confirmText: '好的',
+        variant: 'warning'
+      });
       return;
     }
-    if (!confirm(`确定结束复习？将提交 ${feedbacks.length} 个已复习单词。`)) return;
-    postFeedback(feedbacks).then(setResult);
+    const confirmed = await showConfirm({
+      title: '结束复习',
+      message: `确定结束复习？将提交 ${feedbacks.length} 个已复习单词。`,
+      confirmText: '确定',
+      cancelText: '继续',
+      variant: 'warning'
+    });
+    if (confirmed) {
+      postFeedback(feedbacks).then(setResult);
+    }
   };
 
   if (loading) return (
