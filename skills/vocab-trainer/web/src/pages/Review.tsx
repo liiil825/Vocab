@@ -34,6 +34,26 @@ type FeedbackResult = {
   message: string;
 };
 
+function EnrichmentTable({ label, items }: { label: string; items: EnrichItem[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <details className='group'>
+      <summary className='text-xs text-text-secondary uppercase tracking-wider cursor-pointer list-none flex items-center gap-1'>
+        <span className='text-accent'>▶</span> {label}
+      </summary>
+      <table className='pl-4 text-text-secondary text-sm mt-1 w-full'>
+        <tbody>
+          {items.map((item, i) => (
+            <tr key={i} className={i > 0 ? 'border-t border-border' : ''}>
+              <td className='pr-4 py-1 align-top'>{item.form}</td>
+              {item.note && <td className='text-text-muted py-1'>{item.note}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  );
+}
 export default function Review() {
   const [words, setWords] = useState<WordDetail[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
