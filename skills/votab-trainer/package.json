@@ -2,22 +2,21 @@
   "name": "vocab-trainer",
   "version": "1.0.0",
   "description": "Vocab-Trainer MCP Server with Spaced Repetition",
-  "main": "dist/index.js",
+  "private": true,
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsc",
-    "start": "bun run dist/index.js",
-    "test": "bun run tests/run-all.mjs",
-    "test:unit": "bun run tests/run-all.mjs unit",
-    "test:integration": "bun run tests/run-all.mjs integration",
-    "api": "bun run api/server.ts",
+    "build": "bun run build",
+    "build:mcp": "cd packages/vocab-mcp && bun run src/index.ts",
+    "build:api": "cd packages/vocab-api && bun run src/server.ts",
+    "dev:mcp": "cd packages/vocab-mcp && bun run src/index.ts",
+    "dev:api": "cd packages/vocab-api && bun run src/server.ts",
+    "start": "bun run dev:mcp",
+    "api": "bun run dev:api",
     "dev:web": "cd web && bun run dev --host",
     "dev": "bun run api & bun run dev:web"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "hono": "^4.12.9",
-    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

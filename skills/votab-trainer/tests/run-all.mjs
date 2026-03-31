@@ -8,7 +8,6 @@
  *   bun run tests/run-all.mjs integration # 只运行集成测试
  */
 import { spawn } from "child_process";
-import { existsSync } from "fs";
 
 const TEST_SUITES = {
   unit: {
@@ -26,15 +25,6 @@ const TEST_SUITES = {
     ]
   }
 };
-
-function getTestSuites() {
-  // 检查 dist 是否存在
-  if (!existsSync("dist/index.js")) {
-    console.error("❌ dist/ 目录不存在，请先运行: bun run build");
-    process.exit(1);
-  }
-  return TEST_SUITES;
-}
 
 async function runTest(testPath, testName) {
   return new Promise((resolve) => {
@@ -63,7 +53,7 @@ async function main() {
   console.log("=".repeat(60));
   console.log("");
 
-  const suites = getTestSuites();
+  const suites = TEST_SUITES;
   const totalResults = {};
 
   let totalPassed = 0;

@@ -9,8 +9,7 @@
  * 4. 测试错误处理
  */
 import { McpClient } from "../helpers/mcp-client.mjs";
-import { setupTestData, teardownTestData, resetTestData, readTestData, writeTestData, getToday, TEST_DATA_FILE } from "../helpers/data-env.mjs";
-import { addDays } from "../../dist/algorithm.js";
+import { setupTestData, teardownTestData, resetTestData, readTestData, writeTestData, getToday, addDays, TEST_DATA_FILE } from "../helpers/data-env.mjs";
 
 console.log("=== 批量部分复习集成测试 ===\n");
 

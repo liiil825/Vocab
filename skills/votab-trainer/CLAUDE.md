@@ -4,19 +4,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`vocab-trainer` is an MCP server providing spaced repetition vocabulary learning. It exposes 7 tools via the Model Context Protocol for OpenClaw agents to use. Also includes an HTTP API server and React web frontend for direct access.
+`vocab-trainer` is a monorepo providing spaced repetition vocabulary learning via MCP server, HTTP API, and React web frontend.
+
+## Architecture
+
+```
+vocab-trainer/                    # Bun workspace root
+├── packages/
+│   ├── vocab-core/               # Shared core library
+│   │   ├── src/
+│   │   │   ├── index.ts         # Public exports
+│   │   │   ├── types.ts         # TypeScript types
+│   │   │   ├── storage.ts       # SQLite storage (factory pattern)
+│   │   │   └── algorithm.ts      # Spaced repetition algorithm
+│   │   └── schema.sql           # SQLite schema
+│   │
+│   ├── vocab-mcp/               # MCP server (AI tools)
+│   │   └── src/
+│   │       ├── index.ts         # MCP server entry
+│   │       ├── tools.ts         # 7 MCP tools
+│   │       └── llm.ts           # LLM integration
+│   │
+│   └── vocab-api/               # HTTP REST API (Hono)
+│       └── src/
+│           ├── server.ts        # Hono API server
+│           └── llm.ts           # LLM integration
+│
+├── web/                          # React frontend (unchanged)
+└── tests/                        # Test suite
+    ├── unit/                    # Unit tests
+    ├── integration/             # Integration tests
+    └── helpers/                 # Test utilities
+```
 
 ## Commands
 
 ```bash
-bun run build          # Compile TypeScript to dist/
-bun run start          # Run MCP server (bun run dist/index.js)
-bun run api            # Run HTTP API server (bun run api/server.ts)
-bun run dev:web        # Run React frontend dev server (LAN: bun run dev:web --host)
-bun run dev            # Run both API and web dev servers
-bun run test           # Run all tests (unit + integration)
-bun run test:unit      # Unit tests only
-bun run test:integration # Integration tests only
+# Build & Run
+bun run build              # Build all packages
+bun run dev:mcp            # Run MCP server (packages/vocab-mcp/src/index.ts)
+bun run dev:api            # Run HTTP API (packages/vocab-api/src/server.ts)
+bun run dev:web            # Run React frontend
+
+# Test
+bun run test               # Run all tests (unit + integration)
+bun run test:unit          # Unit tests only
+bun run test:integration   # Integration tests only
+
+# Individual test files
+bun run tests/run-all.mjs              # All tests
+bun run tests/run-all.mjs unit         # Unit tests only
+bun run tests/run-all.mjs integration  # Integration tests only
 ```
 
 ## LAN Access
@@ -27,24 +65,15 @@ For access from other devices on the LAN, set `VITE_API_URL` in `web/.env`:
 VITE_API_URL=http://192.168.0.105:3099/api
 ```
 
-The API server and Vite dev server both bind to `0.0.0.0` (all network interfaces).
+## Storage Design
 
-## Architecture
+**Factory Pattern**: `vocab-core` uses `createStorage()` factory instead of singleton. This enables:
+- Test isolation via unique database files per test suite
+- Independent instances per process (MCP server, API server)
 
-See [docs/architecture.md](docs/architecture.md) for full architecture documentation.
+**Critical design**: `createStorageFromEnv()` reads `VOCAB_DATA_PATH` at call time and caches the instance. For tests, `closeDb()` invalidates the cache before switching test data files.
 
-```
-index.ts          # MCP server entry, registers tools via @modelcontextprotocol/sdk
-    ↓
-tools.ts          # Defines 7 MCP tools (vocab_review, vocab_add_word, etc.)
-    ↓
-algorithm.ts      # Spaced repetition logic: calculateNextReview, processReviewFeedbacks
-storage.ts        # SQLite storage via bun:sqlite, path resolved at RUNTIME
-    ↓
-~/.vocab-trainer/words.db  # Persistent SQLite storage
-```
-
-**Critical design**: `storage.ts` uses `getDataPath()` as a function (not a constant), so it reads `VOCAB_DATA_PATH` at call time. This enables test isolation — tests set `VOCAB_DATA_PATH` before importing storage/algorithm modules.
+**Database path**: `~/.vocab-trainer/words.db` (or `VOCAB_DATA_PATH` env var)
 
 ## Data Model
 
@@ -67,10 +96,8 @@ storage.ts        # SQLite storage via bun:sqlite, path resolved at RUNTIME
 
 ## Testing
 
-See [docs/testing.md](docs/testing.md) for full test documentation including commands, structure, coverage, and data isolation mechanism.
+See [docs/testing.md](docs/testing.md) for full test documentation.
 
-**Key isolation design**: `storage.ts` uses `getDataPath()` as a function (not a constant), reading `VOCAB_DATA_PATH` at call time. Tests set this env var before importing storage/algorithm modules.
+**Test isolation**: Each test suite uses a unique SQLite database file (UUID-based). The `closeDb()` function invalidates the cached storage instance between tests to ensure isolation.
 
-## Bug Note
-
-`processReviewFeedbacks` was previously buggy — it called `updateWord()` which internally loaded/saved data, then `saveData(data)` at the end overwrote those changes. Fixed by directly mutating `existingWord` in memory before a single `saveData()` call at the end.
+**Known limitation**: Integration tests that verify streak behavior across MCP server restarts may fail because the MCP server runs as a separate process with its own storage cache.

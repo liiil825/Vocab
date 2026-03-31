@@ -10,23 +10,23 @@ description: |
   5. `/vocab list [all|new|hard|mastered]` — 按状态筛选查看单词
   6. `/vocab remove <单词>` — 从词库移除
 
-  ⚠️ 本技能通过 MCP 工具调用 Vocab-Trainer 服务器，禁止直接读写 words.json。
+  ⚠️ 本技能通过 MCP 工具调用 Vocab-Trainer 服务器，禁止直接读写数据库。
 ---
 
 # ⚙️ MCP 工具（必须使用）
 
-本技能依赖 Vocab-Trainer MCP 服务器。**所有 `/vocab` 指令必须通过 MCP 工具执行，禁止直接读写 words.json。**
+本技能依赖 Vocab-Trainer MCP 服务器。**所有 `/vocab` 指令必须通过 MCP 工具执行，禁止直接读写数据库。**
 
 ## 启动 MCP（如未运行）
 
 ```bash
-mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-english-teacher/skills/votab-trainer/dist/index.js"
+mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-english-teacher/skills/votab-trainer/packages/vocab-mcp/src/index.ts"
 mcporter list  # 验证 vocab-trainer 已注册且 healthy
 ```
 
 如果 `mcporter list` 显示没有 servers，需要先添加：
 ```bash
-mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-english-teacher/skills/votab-trainer/dist/index.js"
+mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-english-teacher/skills/votab-trainer/packages/vocab-mcp/src/index.ts"
 ```
 
 ## MCP 工具列表
@@ -46,14 +46,14 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 ```
 用户输入 /vocab xxx
   → 调用对应的 MCP 工具（如 vocab_review）
-  → MCP 服务器读写 ~/.vocab-trainer/words.json
+  → MCP 服务器读写 ~/.vocab-trainer/words.db (SQLite)
   → 返回结构化结果
   → 大模型渲染展示给用户
   → 用户反馈后调用 vocab_review_feedback 更新
   → 完成
 ```
 
-**禁止**：直接用 read/edit 工具读写 words.json。
+**禁止**：直接用 read/edit 工具读写数据库文件。
 
 ---
 
@@ -61,51 +61,41 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 
 ## 数据存储
 
-所有单词保存在 `~/.vocab-trainer/words.json`，如果文件不存在则自动创建。
+所有单词保存在 `~/.vocab-trainer/words.db` (SQLite)，如果文件不存在则自动创建。
 
-### 文件结构
+### 数据库 Schema
 
-```json
-{
-  "version": 1,
-  "streak": 0,
-  "last_review_date": "2026-03-24",
-  "total_reviews": 0,
-  "words": [
-    {
-      "word": "sparingly",
-      "meaning": "适量地，节俭地",
-      "phonetic": "/ˈspeərɪŋli/",
-      "pos": "adv",
-      "example": "Use comments sparingly.",
-      "example_cn": "注释要简洁克制。",
-      "source": "/eng 分析 \"Use comments sparingly.\"",
-      "added": "2026-03-24",
-      "level": 0,
-      "next_review": "2026-03-25",
-      "interval_days": 1,
-      "error_count": 0,
-      "review_count": 0,
-      "history": [
-        {
-          "date": "2026-03-25",
-          "result": "pass"
-        }
-      ]
-    }
-  ]
-}
+```sql
+CREATE TABLE words (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  word TEXT NOT NULL UNIQUE,
+  word_lower TEXT NOT NULL,
+  meaning TEXT DEFAULT '',
+  phonetic TEXT DEFAULT '',
+  pos TEXT DEFAULT '',
+  example TEXT DEFAULT '',
+  example_cn TEXT DEFAULT '',
+  source TEXT DEFAULT 'user',
+  added TEXT NOT NULL,
+  level INTEGER DEFAULT 0,
+  next_review TEXT NOT NULL,
+  interval_days INTEGER DEFAULT 1,
+  error_count INTEGER DEFAULT 0,
+  review_count INTEGER DEFAULT 0,
+  history TEXT DEFAULT '[]',
+  prototype TEXT DEFAULT '',
+  variant TEXT DEFAULT '',
+  etymology TEXT DEFAULT ''
+);
+
+CREATE TABLE stats (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  version INTEGER DEFAULT 1,
+  streak INTEGER DEFAULT 0,
+  last_review_date TEXT,
+  total_reviews INTEGER DEFAULT 0
+);
 ```
-
-### 顶层字段
-
-| 字段               | 说明                     |
-| ------------------ | ------------------------ |
-| `version`          | 数据格式版本号，当前为 1 |
-| `streak`           | 连续复习天数             |
-| `last_review_date` | 最近一次复习日期         |
-| `total_reviews`    | 累计复习轮数             |
-| `words`            | 单词数组                 |
 
 ### 单词字段
 
@@ -124,7 +114,10 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 | `interval_days` | 当前间隔天数                                  |
 | `error_count`   | 累计错误次数                                  |
 | `review_count`  | 累计复习次数                                  |
-| `history`       | 复习历史记录数组                              |
+| `history`       | 复习历史记录数组（JSON 格式）                 |
+| `prototype`     | 词根                                          |
+| `variant`       | 变体                                          |
+| `etymology`     | 词源                                          |
 
 ### history 数组条目
 
@@ -170,7 +163,7 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 
 **处理步骤：**
 
-1. 读取 `~/.vocab-trainer/words.json`（不存在则创建空文件）
+1. 读取数据库 `~/.vocab-trainer/words.db`
 2. 解析用户输入，提取待添加的单词（逗号分隔或自然语言句子）
 3. 对每个单词：
    - 查询音标、词性、中文释义
@@ -259,14 +252,14 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 
 **处理步骤：**
 
-1. 读取 `~/.vocab-trainer/words.json`
+1. 读取数据库
 2. 筛选 `today >= next_review` 的单词
 3. 如果没有待复习单词，输出「今日无待复习」提示并退出
 4. 随机打乱顺序
 5. 逐个展示，等待用户作答反馈
 6. 根据反馈更新 level、interval、next_review
 7. 更新 streak（今天是否是连续复习）
-8. 写回 JSON 文件
+8. 更新数据库
 9. 输出本轮总结
 
 **单个词展示格式：**
@@ -536,10 +529,9 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 
 **处理步骤：**
 
-1. 读取 JSON 文件
-2. 查找匹配单词（大小写不敏感）
-3. 找到则删除并写回，输出确认
-4. 未找到则提示
+1. 从数据库查找匹配单词（大小写不敏感）
+2. 找到则删除，输出确认
+3. 未找到则提示
 
 **输出格式：**
 
@@ -565,17 +557,7 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 
 ## 首次使用初始化
 
-当 `~/.vocab-trainer/words.json` 不存在时，自动创建：
-
-```json
-{
-  "version": 1,
-  "streak": 0,
-  "last_review_date": null,
-  "total_reviews": 0,
-  "words": []
-}
-```
+当 `~/.vocab-trainer/words.db` 不存在时，SQLite 数据库会自动创建，并初始化 schema。
 
 并输出欢迎信息：
 
@@ -604,10 +586,10 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 
 ## 技术要点
 
-### 文件读写顺序
+### 数据库操作
 
 ```
-每次操作开始 → 读取 words.json → 内存中处理 → 写回 words.json
+每次操作开始 → 读取数据库 → 内存中处理 → 更新数据库
 ```
 
 ### 日期格式
@@ -620,7 +602,7 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 
 ### 并发安全
 
-由于是 prompt-based 技能，不存在真正的并发问题。但每次操作都应完整读取 → 修改 → 写回，避免丢失数据。
+由于是 prompt-based 技能，不存在真正的并发问题。SQLite 提供 ACID 保证，每次操作都应完整读取 → 修改 → 更新，避免丢失数据。
 
 ---
 

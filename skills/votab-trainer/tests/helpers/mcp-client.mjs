@@ -4,7 +4,7 @@
 import { spawn } from "child_process";
 
 export class McpClient {
-  constructor({ program = "bun", args = ["run", "dist/index.js"], env = {} } = {}) {
+  constructor({ program = "bun", args = ["run", "packages/vocab-mcp/src/index.ts"], env = {} } = {}) {
     this.program = program;
     this.args = args;
     this.env = env;

@@ -4,13 +4,11 @@
  * 每个测试文件使用独立的测试数据文件（通过 UUID 确保唯一），
  * 配合 storage.ts 的 getDataPath() 函数在运行时读取 VOCAB_DATA_PATH，
  * 实现测试数据与真实数据的完全隔离。
- *
- * 注意: storage.ts 已改用 SQLite (bun:sqlite)，所以使用 .db 扩展名
  */
 import { existsSync, mkdirSync, unlinkSync, renameSync } from "fs";
 import { randomUUID } from "crypto";
 import { Database } from "bun:sqlite";
-import { closeDb } from "../../dist/storage.js";
+import { closeDb } from "../../packages/vocab-core/src/storage.js";
 
 const DATA_DIR = `${process.env.HOME}/.vocab-trainer`;
 const DEFAULT_DATA_FILE = `${DATA_DIR}/words.db`;
@@ -133,8 +131,13 @@ export function readTestData() {
 /**
  * 直接写入测试数据文件（用于测试辅助）
  * 使用单独的直接文件操作方式，避免与存储模块的缓存连接冲突
+ *
+ * 注意: 直接写入后缓存的 storage 会过期，所以会调用 closeDb() 使其失效
  */
 export function writeTestData(data) {
+  // 先关闭缓存的 storage，确保下次 MCP 工具调用会创建新实例
+  closeDb();
+
   // 使用单独的连接来写入测试数据
   const db = new Database(TEST_DATA_FILE);
 
@@ -188,3 +191,8 @@ export function writeTestData(data) {
 export function getToday() {
   return new Date().toISOString().split("T")[0];
 }
+
+/**
+ * 获取 addDays 函数
+ */
+export { addDays } from "../../packages/vocab-core/src/algorithm.js";

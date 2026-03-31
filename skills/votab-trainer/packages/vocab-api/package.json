@@ -1,0 +1,16 @@
+{
+  "name": "vocab-api",
+  "version": "1.0.0",
+  "description": "Vocab-Trainer HTTP REST API",
+  "type": "module",
+  "main": "src/server.ts",
+  "dependencies": {
+    "hono": "^4.12.9",
+    "vocab-core": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "bun-types": "^1.3.11"
+  }
+}

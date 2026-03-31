@@ -5,47 +5,79 @@
 - **运行时**: Bun
 - **后端**: TypeScript, bun:sqlite, Hono
 - **前端**: Vite, React, React Router v6
-- **协议**: MCP (保留), HTTP API (新增)
+- **协议**: MCP (AI工具), HTTP API (Web前端)
+- **架构**: Bun workspaces monorepo
 
 ## 目录结构
 
 ```
-vocab-trainer/
-├── src/                      # MCP server
-│   ├── index.ts             # MCP server entry
-│   ├── tools.ts             # 7个 MCP tools
-│   ├── storage.ts          # SQLite storage (bun:sqlite)
-│   ├── algorithm.ts         # 间隔重复算法
-│   └── types.ts            # TypeScript 类型
-├── api/                     # HTTP API server
-│   └── server.ts           # Hono API (port 3099)
-├── web/                     # React 前端
+vocab-trainer/                    # Bun workspace root
+├── packages/
+│   ├── vocab-core/               # 共享核心库
+│   │   ├── package.json
+│   │   ├── schema.sql            # SQLite schema (单一数据源)
+│   │   └── src/
+│   │       ├── index.ts          # 公共导出
+│   │       ├── types.ts          # TypeScript 类型
+│   │       ├── storage.ts        # SQLite 存储 (工厂模式)
+│   │       └── algorithm.ts      # 间隔重复算法
+│   │
+│   ├── vocab-mcp/               # MCP 服务器
+│   │   ├── package.json
+│   │   └── src/
+│   │       ├── index.ts          # MCP 服务入口
+│   │       ├── tools.ts          # 7个 MCP tools
+│   │       └── llm.ts           # LLM 集成
+│   │
+│   └── vocab-api/               # HTTP REST API
+│       ├── package.json
+│       └── src/
+│           ├── server.ts        # Hono API (port 3099)
+│           └── llm.ts           # LLM 集成
+│
+├── web/                          # React 前端
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── Review.tsx # 复习页面
-│   │   │   ├── Learn.tsx  # 学习页面
-│   │   │   ├── Status.tsx # 状态页面
-│   │   │   └── List.tsx   # 列表页面
-│   │   ├── api.ts         # API client
-│   │   ├── App.tsx        # React Router
-│   │   └── main.tsx       # 入口
+│   │   │   ├── Review.tsx      # 复习页面
+│   │   │   ├── Learn.tsx       # 学习页面
+│   │   │   ├── Status.tsx      # 状态页面
+│   │   │   └── List.tsx        # 列表页面
+│   │   ├── api.ts             # API 客户端
+│   │   ├── App.tsx            # React Router
+│   │   └── main.tsx           # 入口
 │   └── vite.config.ts
-├── db/
-│   └── schema.sql         # SQLite schema
-└── dist/                  # 编译输出
+│
+└── tests/                        # 测试套件
+    ├── unit/                    # 单元测试
+    ├── integration/             # 集成测试
+    └── helpers/                 # 测试工具
 ```
 
 ## 核心设计
 
-### 存储层 (storage.ts)
+### 存储层 (vocab-core/src/storage.ts)
 
-使用 `bun:sqlite` 替代 JSON 文件存储。
+使用 `bun:sqlite` 存储，采用**工厂模式**替代单例模式：
 
-**关键设计**: `getDataPath()` 是函数而非常量，每次调用 `loadData()` / `saveData()` 时在运行时读取 `VOCAB_DATA_PATH`。这使得测试可以设置环境变量实现数据隔离。
+```typescript
+// 创建独立实例
+const storage = createStorage({ dbPath: '/path/to/db.db' });
 
-**数据库路径**: `~/.vocab-trainer/words.db`
+// 从环境变量创建 (MCP/API 服务器使用)
+const storage = createStorageFromEnv();
 
-### 数据库 Schema
+// 测试时清除缓存
+closeDb(); // 使缓存失效，下次调用 createStorageFromEnv() 会创建新实例
+```
+
+**关键设计**:
+- `createStorageFromEnv()` 在调用时读取 `VOCAB_DATA_PATH`，并缓存实例
+- 测试通过 `closeDb()` 清除缓存，实现测试数据隔离
+- 每个进程（MCP服务器、API服务器）独立缓存，避免状态污染
+
+**数据库路径**: `~/.vocab-trainer/words.db` 或 `VOCAB_DATA_PATH` 环境变量
+
+### 数据库 Schema (vocab-core/schema.sql)
 
 ```sql
 -- words 表: 存储单词
@@ -59,24 +91,34 @@ CREATE TABLE words (
   next_review TEXT,                  -- YYYY-MM-DD
   interval_days INTEGER DEFAULT 1,
   error_count, review_count INTEGER DEFAULT 0,
-  history TEXT DEFAULT '[]'          -- JSON: [{date, result}]
+  history TEXT DEFAULT '[]',         -- JSON: [{date, result}]
+  prototype TEXT DEFAULT '',
+  variant TEXT DEFAULT '',
+  etymology TEXT DEFAULT ''
 );
 
 -- stats 表: 存储统计数据
 CREATE TABLE stats (
   id INTEGER PRIMARY KEY DEFAULT 1,
-  version, streak, last_review_date, total_reviews
+  version INTEGER DEFAULT 1,
+  streak INTEGER DEFAULT 0,
+  last_review_date TEXT,
+  total_reviews INTEGER DEFAULT 0
 );
+
+CREATE INDEX idx_words_word_lower ON words(word_lower);
+CREATE INDEX idx_words_next_review ON words(next_review);
+CREATE INDEX idx_words_level ON words(level);
 ```
 
-### 间隔重复算法 (algorithm.ts)
+### 间隔重复算法 (vocab-core/src/algorithm.ts)
 
 - Level 0-5 对应间隔: [1, 2, 4, 7, 15, 30] 天
 - `pass`: level++, interval 翻倍
 - `fail`: level 重置为 0, interval = 1
 - `fuzzy`: level 不变, interval 减半
 
-### MCP Tools (tools.ts)
+### MCP Tools (vocab-mcp/src/tools.ts)
 
 | Tool | Purpose |
 |------|---------|
@@ -88,7 +130,7 @@ CREATE TABLE stats (
 | `vocab_remove_word` | 移除单词 |
 | `vocab_get_word_detail` | 单词详情 |
 
-### HTTP API (api/server.ts)
+### HTTP API (vocab-api/src/server.ts)
 
 端口: 3099
 
@@ -112,8 +154,32 @@ CREATE TABLE stats (
 ## 启动命令
 
 ```bash
-bun run build       # 编译 TypeScript
-bun run api         # 启动 API server (port 3099)
-bun run dev:web     # 启动前端 (port 5173)
-bun run dev         # 同时启动 API + 前端
+# 构建
+bun run build              # 构建所有 packages
+
+# 开发
+bun run dev:mcp           # 启动 MCP 服务器
+bun run dev:api           # 启动 API 服务器 (port 3099)
+bun run dev:web           # 启动前端 (port 5173)
+
+# 测试
+bun run test              # 运行所有测试
+bun run test:unit         # 单元测试
+bun run test:integration  # 集成测试
 ```
+
+## 测试隔离设计
+
+每个测试套件使用独立的 SQLite 数据库文件（UUID 确保唯一性）：
+
+```javascript
+const TEST_DATA_FILE = `${DATA_DIR}/words.test.${TEST_ID}.db`;
+```
+
+测试流程：
+1. `setupTestData()` - 备份现有数据，切换到测试数据库
+2. `resetTestData()` - 创建新的空数据库并调用 `closeDb()` 清除缓存
+3. `writeTestData()` - 直接写入测试数据，调用 `closeDb()` 使 storage 缓存失效
+4. `teardownTestData()` - 清理测试数据，恢复备份
+
+**已知限制**: MCP 服务器运行在独立进程中，有自己的存储缓存。集成测试中验证 streak 连续行为的测试可能失败，因为 `writeTestData()` 只能清除测试进程的缓存，无法清除 MCP 服务器的缓存。
