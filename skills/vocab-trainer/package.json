@@ -17,7 +17,10 @@
     "start": "bun run dev:mcp",
     "api": "bun run dev:api",
     "dev:web": "cd web && bun run dev --host",
-    "dev": "bun run api & bun run dev:web"
+    "dev": "bun run api & bun run dev:web",
+    "test": "bun run tests/run-all.mjs",
+    "test:unit": "bun run tests/run-all.mjs unit",
+    "test:integration": "bun run tests/run-all.mjs integration"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
