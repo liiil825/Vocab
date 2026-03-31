@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { VocabData, Word, ReviewRecord, EnrichResult, EnrichItem } from "./types.js";
+import { VocabData, Word, ReviewRecord } from "./types.js";
 
 function getDataPath(): string {
   return process.env.VOCAB_DATA_PATH ||
@@ -42,10 +42,17 @@ function rowToWord(row: any): Word {
     interval_minutes: row.interval_minutes,
     error_count: row.error_count,
     review_count: row.review_count,
-    history: safeJsonParse(row.history, [] as ReviewRecord[]),
-    prototype: safeJsonParse(row.prototype, [] as EnrichItem[]),
-    variant: safeJsonParse(row.variant, [] as EnrichItem[]),
-    etymology: safeJsonParse(row.etymology, [] as EnrichItem[])
+<<<<<<< HEAD
+    history: JSON.parse(row.history || "[]") as ReviewRecord[],
+    prototype: row.prototype || "",
+    variant: row.variant || "",
+    etymology: row.etymology || ""
+=======
+    history: JSON.parse(row.history || "[]") as ReviewRecord[],
+    prototype: row.prototype || "",
+    variant: row.variant || "",
+    etymology: row.etymology || ""
+>>>>>>> parent of 4fecf7b (feat(core): change enrichment fields from string to EnrichItem[] arrays)
   };
 }
 
@@ -62,7 +69,7 @@ export interface StorageConnection {
   getWordsByFilter(filter?: string): Word[];
   getDueWords(): Word[];
   updateStats(streak: number, lastReviewDate: string): void;
-  updateWordEnrich(word: string, enrich: EnrichResult): void;
+  updateWordEnrich(word: string, enrich: { prototype: string; variant: string; etymology: string }): void;
   close(): void;
 }
 
@@ -95,9 +102,9 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
       error_count INTEGER DEFAULT 0,
       review_count INTEGER DEFAULT 0,
       history TEXT DEFAULT '[]',
-      prototype TEXT DEFAULT '[]',
-      variant TEXT DEFAULT '[]',
-      etymology TEXT DEFAULT '[]'
+      prototype TEXT DEFAULT '',
+      variant TEXT DEFAULT '',
+      etymology TEXT DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS stats (
@@ -115,9 +122,9 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
 
   // Migrate existing rows: add new columns if not exist (for existing DBs)
   try {
-    db.exec("ALTER TABLE words ADD COLUMN prototype TEXT DEFAULT '[]'");
-    db.exec("ALTER TABLE words ADD COLUMN variant TEXT DEFAULT '[]'");
-    db.exec("ALTER TABLE words ADD COLUMN etymology TEXT DEFAULT '[]'");
+    db.exec("ALTER TABLE words ADD COLUMN prototype TEXT DEFAULT ''");
+    db.exec("ALTER TABLE words ADD COLUMN variant TEXT DEFAULT ''");
+    db.exec("ALTER TABLE words ADD COLUMN etymology TEXT DEFAULT ''");
   } catch {
     // Columns may already exist
   }
@@ -183,9 +190,9 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         word.error_count,
         word.review_count,
         JSON.stringify(word.history),
-        JSON.stringify(word.prototype),
-        JSON.stringify(word.variant),
-        JSON.stringify(word.etymology)
+        word.prototype || "",
+        word.variant || "",
+        word.etymology || ""
       );
     },
 
@@ -227,9 +234,9 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         updated.error_count,
         updated.review_count,
         JSON.stringify(updated.history),
-        JSON.stringify(updated.prototype),
-        JSON.stringify(updated.variant),
-        JSON.stringify(updated.etymology),
+        updated.prototype || "",
+        updated.variant || "",
+        updated.etymology || "",
         wordLower
       );
 
@@ -287,11 +294,11 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
       `).run(streak, lastReviewDate);
     },
 
-    updateWordEnrich(word: string, enrich: EnrichResult): void {
+    updateWordEnrich(word: string, enrich: { prototype: string; variant: string; etymology: string }): void {
       db.query(`
         UPDATE words SET prototype = ?, variant = ?, etymology = ?
         WHERE word_lower = ?
-      `).run(JSON.stringify(enrich.prototype), JSON.stringify(enrich.variant), JSON.stringify(enrich.etymology), word.toLowerCase());
+      `).run(enrich.prototype, enrich.variant, enrich.etymology, word.toLowerCase());
     },
 
     close(): void {

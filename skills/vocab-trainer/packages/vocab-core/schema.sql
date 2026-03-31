@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS words (
   error_count INTEGER DEFAULT 0,
   review_count INTEGER DEFAULT 0,
   history TEXT DEFAULT '[]',
-  prototype TEXT DEFAULT '[]',
-  variant TEXT DEFAULT '[]',
-  etymology TEXT DEFAULT '[]'
+  prototype TEXT DEFAULT '',
+  variant TEXT DEFAULT '',
+  etymology TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS stats (

@@ -3,11 +3,6 @@ export interface ReviewRecord {
   result: "pass" | "fail" | "fuzzy";
 }
 
-export interface EnrichItem {
-  form: string;
-  note?: string;
-}
-
 export interface Word {
   word: string;
   meaning: string;
@@ -23,9 +18,9 @@ export interface Word {
   error_count: number;
   review_count: number;
   history: ReviewRecord[];
-  prototype: EnrichItem[];
-  variant: EnrichItem[];
-  etymology: EnrichItem[];
+  prototype: string;
+  variant: string;
+  etymology: string;
 }
 
 export interface VocabData {
@@ -101,7 +96,7 @@ export interface VocabRemoveResponse {
 export interface VocabWordDetailResponse extends Word {}
 
 export interface EnrichResult {
-  prototype: EnrichItem[];
-  variant: EnrichItem[];
-  etymology: EnrichItem[];
+  prototype: string;
+  variant: string;
+  etymology: string;
 }
