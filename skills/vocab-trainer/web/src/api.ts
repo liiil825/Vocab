@@ -66,17 +66,12 @@ export const postWord = (word: Omit<WordDetail, 'level' | 'next_review' | 'inter
 }).then(r => r.json());
 export const deleteWord = (word: string) => fetch(`${API}/words/${encodeURIComponent(word)}`, { method: "DELETE" }).then(r => r.json());
 
-export type EnrichItem = {
-  form: string;
-  note?: string;
-};
-
 export type EnrichData = {
   word: string;
-  prototype: EnrichItem[];
-  variant: EnrichItem[];
-  etymology: EnrichItem[];
-};
+  prototype: string;
+  variant: string;
+  etymology: string;
+}
 
 export const getWordEnrich = (word: string): Promise<EnrichData> =>
   fetch(`${API}/words/${encodeURIComponent(word)}/enrich`).then(r => r.json());
