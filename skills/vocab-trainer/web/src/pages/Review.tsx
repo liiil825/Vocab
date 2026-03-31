@@ -173,7 +173,7 @@ export default function Review() {
   if (words.length === 0) return (
     <FadeIn>
       <Card className='text-center py-16'>
-        <p className='text-xl text-text-secondary'>今天没有需要复习的单词！</p>
+        <p className='text-xl text-text-secondary'>暂时没有需要复习的单词</p>
         {nextReview && countdown && (
           <div className='mt-4'>
             <p className='text-text-muted text-sm'>下一个单词: <span className='text-accent font-medium'>{nextReview.word}</span></p>
