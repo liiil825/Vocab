@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getReview, postFeedback, getWordEnrich, getNextReview, type EnrichData } from '../api';
+import { getReview, postFeedback, getWordEnrich, getNextReview, type EnrichData, type EnrichItem } from '../api';
 import { playSound } from '../hooks/useSound';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -33,6 +33,27 @@ type FeedbackResult = {
   updated_streak: number;
   message: string;
 };
+
+function EnrichmentTable({ label, items }: { label: string; items: EnrichItem[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <details className='group'>
+      <summary className='text-xs text-text-secondary uppercase tracking-wider cursor-pointer list-none flex items-center gap-1'>
+        <span className='text-accent'>▶</span> {label}
+      </summary>
+      <table className='pl-4 text-text-secondary text-sm mt-1 w-full'>
+        <tbody>
+          {items.map((item, i) => (
+            <tr key={i} className={i > 0 ? 'border-t border-border' : ''}>
+              <td className='pr-4 py-1 align-top'>{item.form}</td>
+              {item.note && <td className='text-text-muted py-1'>{item.note}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  );
+}
 
 export default function Review() {
   const [words, setWords] = useState<WordDetail[]>([]);
@@ -274,30 +295,9 @@ export default function Review() {
               {enrichLoading && <p className='text-text-muted text-sm italic py-2'>正在获取扩展信息...</p>}
               {!enrichLoading && enrich && (
                 <div className='border-t border-border pt-3 mt-3 space-y-2'>
-                  {enrich.prototype && (
-                    <details className='group'>
-                      <summary className='text-xs text-text-secondary uppercase tracking-wider cursor-pointer list-none flex items-center gap-1'>
-                        <span className='text-accent'>▶</span> 原型
-                      </summary>
-                      <p className='pl-4 text-text-secondary text-sm mt-1'>{enrich.prototype}</p>
-                    </details>
-                  )}
-                  {enrich.variant && (
-                    <details className='group'>
-                      <summary className='text-xs text-text-secondary uppercase tracking-wider cursor-pointer list-none flex items-center gap-1'>
-                        <span className='text-accent'>▶</span> 变体
-                      </summary>
-                      <p className='pl-4 text-text-secondary text-sm mt-1 whitespace-pre-wrap'>{enrich.variant}</p>
-                    </details>
-                  )}
-                  {enrich.etymology && (
-                    <details className='group'>
-                      <summary className='text-xs text-text-secondary uppercase tracking-wider cursor-pointer list-none flex items-center gap-1'>
-                        <span className='text-accent'>▶</span> 词源
-                      </summary>
-                      <p className='pl-4 text-text-secondary text-sm mt-1 whitespace-pre-wrap'>{enrich.etymology}</p>
-                    </details>
-                  )}
+                  <EnrichmentTable label='原型' items={enrich.prototype} />
+                  <EnrichmentTable label='变体' items={enrich.variant} />
+                  <EnrichmentTable label='词源' items={enrich.etymology} />
                 </div>
               )}
 
