@@ -1,5 +1,11 @@
 import type { EnrichResult } from "vocab-core/types";
 
+const MAX_ERROR_PREVIEW = 200;
+
+interface MiniMaxChatResponse {
+  choices?: Array<{ message?: { content?: string } }>;
+}
+
 function getMinimaxConfig() {
   const apiKey = Bun.env.MINIMAX_API_KEY;
   const baseUrl = Bun.env.MINIMAX_BASE_URL || "https://api.minimaxi.com";
@@ -48,13 +54,13 @@ export async function enrichWord(word: string): Promise<EnrichResult> {
     throw new Error(`MiniMax API error: ${response.status} ${errorText}`);
   }
 
-  const data = await response.json() as any;
+  const data = await response.json() as MiniMaxChatResponse;
 
   // MiniMax-M2.7 returns: { choices: [{ message: { content: "..." } }] }
   const content = data.choices?.[0]?.message?.content;
 
   if (!content) {
-    throw new Error(`MiniMax API returned no content: ${JSON.stringify(data).slice(0, 200)}`);
+    throw new Error(`MiniMax API returned no content: ${JSON.stringify(data).slice(0, MAX_ERROR_PREVIEW)}`);
   }
 
   // Parse JSON from response
@@ -87,6 +93,6 @@ export async function enrichWord(word: string): Promise<EnrichResult> {
         // fall through to error
       }
     }
-    throw new Error(`Failed to parse MiniMax response as JSON: ${jsonStr.slice(0, 200)}`);
+    throw new Error(`Failed to parse MiniMax response as JSON: ${jsonStr.slice(0, MAX_ERROR_PREVIEW)}`);
   }
 }
