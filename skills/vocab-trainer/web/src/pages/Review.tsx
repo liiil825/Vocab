@@ -6,6 +6,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import FadeIn from '../components/motion/FadeIn';
 import { useModal } from '../components/ui/Modal';
+import VariantTable from '../components/enrichment/VariantTable';
 
 type WordDetail = {
   word: string;
@@ -273,30 +274,24 @@ export default function Review() {
               {/* Enrichment Sections */}
               {enrichLoading && <p className='text-text-muted text-sm italic py-2'>正在获取扩展信息...</p>}
               {!enrichLoading && enrich && (
-                <div className='border-t border-border pt-3 mt-3 space-y-2'>
+                <div className='border-t border-border pt-3 mt-3 space-y-3'>
                   {enrich.prototype && (
-                    <details className='group'>
-                      <summary className='text-xs text-text-secondary uppercase tracking-wider cursor-pointer list-none flex items-center gap-1'>
-                        <span className='text-accent'>▶</span> 原型
-                      </summary>
-                      <p className='pl-4 text-text-secondary text-sm mt-1'>{enrich.prototype}</p>
-                    </details>
+                    <div className='pl-3 py-2 border-l-2 border-blue-500 bg-blue-500/5 rounded-r'>
+                      <div className='text-xs text-blue-500 uppercase tracking-wider font-medium mb-1'>原型</div>
+                      <p className='text-text-primary text-sm'>{enrich.prototype}</p>
+                    </div>
                   )}
-                  {enrich.variant && (
-                    <details className='group'>
-                      <summary className='text-xs text-text-secondary uppercase tracking-wider cursor-pointer list-none flex items-center gap-1'>
-                        <span className='text-accent'>▶</span> 变体
-                      </summary>
-                      <p className='pl-4 text-text-secondary text-sm mt-1 whitespace-pre-wrap'>{enrich.variant}</p>
-                    </details>
+                  {enrich.variant && enrich.variant.length > 0 && (
+                    <div className='pl-3 py-2 border-l-2 border-green-500 bg-green-500/5 rounded-r'>
+                      <div className='text-xs text-green-500 uppercase tracking-wider font-medium mb-2'>变体</div>
+                      <VariantTable variants={enrich.variant} />
+                    </div>
                   )}
                   {enrich.etymology && (
-                    <details className='group'>
-                      <summary className='text-xs text-text-secondary uppercase tracking-wider cursor-pointer list-none flex items-center gap-1'>
-                        <span className='text-accent'>▶</span> 词源
-                      </summary>
-                      <p className='pl-4 text-text-secondary text-sm mt-1 whitespace-pre-wrap'>{enrich.etymology}</p>
-                    </details>
+                    <div className='pl-3 py-2 border-l-2 border-purple-500 bg-purple-500/5 rounded-r'>
+                      <div className='text-xs text-purple-500 uppercase tracking-wider font-medium mb-1'>词源</div>
+                      <p className='text-text-secondary text-sm'>{enrich.etymology}</p>
+                    </div>
                   )}
                 </div>
               )}

@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { VocabData, Word, ReviewRecord } from "./types.js";
+import { VocabData, Word, ReviewRecord, VariantEntry } from "./types.js";
 
 function getDataPath(): string {
   return process.env.VOCAB_DATA_PATH ||
@@ -18,6 +18,18 @@ function ensureDir(dbPath: string): void {
 }
 
 function rowToWord(row: any): Word {
+  // Parse variant - handle both old string format and new JSON array format
+  let variant: VariantEntry[] = [];
+  if (row.variant) {
+    try {
+      const parsed = JSON.parse(row.variant);
+      variant = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      // Old string format or invalid JSON - leave as empty array
+      variant = [];
+    }
+  }
+
   return {
     word: row.word,
     meaning: row.meaning || "",
@@ -34,7 +46,7 @@ function rowToWord(row: any): Word {
     review_count: row.review_count,
     history: JSON.parse(row.history || "[]") as ReviewRecord[],
     prototype: row.prototype || "",
-    variant: row.variant || "",
+    variant,
     etymology: row.etymology || ""
   };
 }
@@ -52,7 +64,7 @@ export interface StorageConnection {
   getWordsByFilter(filter?: string): Word[];
   getDueWords(): Word[];
   updateStats(streak: number, lastReviewDate: string): void;
-  updateWordEnrich(word: string, enrich: { prototype: string; variant: string; etymology: string }): void;
+  updateWordEnrich(word: string, enrich: { prototype: string; variant: VariantEntry[]; etymology: string }): void;
   close(): void;
 }
 
@@ -173,7 +185,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         word.review_count,
         JSON.stringify(word.history),
         word.prototype || "",
-        word.variant || "",
+        JSON.stringify(word.variant || []),
         word.etymology || ""
       );
     },
@@ -217,7 +229,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         updated.review_count,
         JSON.stringify(updated.history),
         updated.prototype || "",
-        updated.variant || "",
+        JSON.stringify(updated.variant || []),
         updated.etymology || "",
         wordLower
       );
@@ -276,11 +288,11 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
       `).run(streak, lastReviewDate);
     },
 
-    updateWordEnrich(word: string, enrich: { prototype: string; variant: string; etymology: string }): void {
+    updateWordEnrich(word: string, enrich: { prototype: string; variant: VariantEntry[]; etymology: string }): void {
       db.query(`
         UPDATE words SET prototype = ?, variant = ?, etymology = ?
         WHERE word_lower = ?
-      `).run(enrich.prototype, enrich.variant, enrich.etymology, word.toLowerCase());
+      `).run(enrich.prototype, JSON.stringify(enrich.variant || []), enrich.etymology, word.toLowerCase());
     },
 
     close(): void {

@@ -116,9 +116,9 @@ CREATE TABLE stats (
 | `error_count`     | 累计错误次数                                  |
 | `review_count`    | 累计复习次数                                  |
 | `history`         | 复习历史记录数组（JSON 格式）                 |
-| `prototype`       | 词根                                          |
-| `variant`         | 变体                                          |
-| `etymology`       | 词源                                          |
+| `prototype`       | 词根（英文）                                   |
+| `variant`         | 变体数组 JSON: `[{"form":"past","value":"walked"}]` |
+| `etymology`       | 词源（中文）                                   |
 
 ### history 数组条目
 

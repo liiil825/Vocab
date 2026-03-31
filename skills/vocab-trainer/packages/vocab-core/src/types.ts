@@ -3,6 +3,11 @@ export interface ReviewRecord {
   result: "pass" | "fail" | "fuzzy";
 }
 
+export interface VariantEntry {
+  form: string;  // e.g., "past", "pp", "ing"
+  value: string; // e.g., "walked", "walking"
+}
+
 export interface Word {
   word: string;
   meaning: string;
@@ -19,7 +24,7 @@ export interface Word {
   review_count: number;
   history: ReviewRecord[];
   prototype: string;
-  variant: string;
+  variant: VariantEntry[];
   etymology: string;
 }
 
@@ -97,6 +102,6 @@ export interface VocabWordDetailResponse extends Word {}
 
 export interface EnrichResult {
   prototype: string;
-  variant: string;
+  variant: VariantEntry[];
   etymology: string;
 }

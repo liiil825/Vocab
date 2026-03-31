@@ -69,8 +69,13 @@ export const deleteWord = (word: string) => fetch(`${API}/words/${encodeURICompo
 export type EnrichData = {
   word: string;
   prototype: string;
-  variant: string;
+  variant: VariantEntry[];
   etymology: string;
+}
+
+export type VariantEntry = {
+  form: string;
+  value: string;
 }
 
 export const getWordEnrich = (word: string): Promise<EnrichData> =>

@@ -15,8 +15,14 @@ function getMinimaxConfig() {
 export async function enrichWord(word: string): Promise<EnrichResult> {
   const { apiKey, baseUrl, model } = getMinimaxConfig();
 
-  const prompt = `分析单词 "${word}"，返回简短的中文JSON（每项不超过50字）：
-{"prototype":"...","variant":"...","etymology":"..."}`;
+  const prompt = `分析单词 "${word}"，返回JSON格式的扩展信息：
+{
+  "prototype": "原型（英文）",
+  "variant": [{"form": "形式（英文）", "value": "值（英文）"}],
+  "etymology": "词源（中文）"
+}
+注意：variant是一个数组，每个元素包含form（如past, pp, ing等）和value（如walked, walking等）。
+prototype、etymology每项不超过50字，variant数组不超过5项。`;
 
   const response = await fetch(`${baseUrl}/v1/text/chatcompletion_v2`, {
     method: "POST",
@@ -59,7 +65,7 @@ export async function enrichWord(word: string): Promise<EnrichResult> {
     const result = JSON.parse(jsonStr) as EnrichResult;
     return {
       prototype: result.prototype || "",
-      variant: result.variant || "",
+      variant: Array.isArray(result.variant) ? result.variant : [],
       etymology: result.etymology || ""
     };
   } catch {
@@ -70,7 +76,7 @@ export async function enrichWord(word: string): Promise<EnrichResult> {
         const result = JSON.parse(jsonStr.slice(0, lastBrace + 1)) as EnrichResult;
         return {
           prototype: result.prototype || "",
-          variant: result.variant || "",
+          variant: Array.isArray(result.variant) ? result.variant : [],
           etymology: result.etymology || ""
         };
       } catch {

@@ -15,6 +15,7 @@ const TEST_SUITES = {
     tests: [
       { name: "算法", path: "tests/unit/algorithm.test.mjs" },
       { name: "存储层", path: "tests/unit/storage.test.mjs" },
+      { name: "扩展信息", path: "tests/unit/enrichment.test.mjs" },
     ]
   },
   integration: {

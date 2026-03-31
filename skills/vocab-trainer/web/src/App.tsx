@@ -5,12 +5,14 @@ import Review from './pages/Review';
 import Learn from './pages/Learn';
 import Status from './pages/Status';
 import List from './pages/List';
+import EnrichmentDemo from './pages/EnrichmentDemo';
 
 const links = [
   { to: '/', label: '复习' },
   { to: '/learn', label: '学习' },
   { to: '/status', label: '状态' },
   { to: '/list', label: '单词' },
+  { to: '/demo', label: '演示' },
 ];
 
 function NavLink({ to, label }: { to: string; label: string }) {
@@ -49,6 +51,7 @@ export default function App() {
               <Route path='/learn' element={<Learn />} />
               <Route path='/status' element={<Status />} />
               <Route path='/list' element={<List />} />
+              <Route path='/demo' element={<EnrichmentDemo />} />
             </Routes>
           </main>
         </div>
