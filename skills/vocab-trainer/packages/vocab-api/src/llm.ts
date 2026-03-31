@@ -21,18 +21,8 @@ function getMinimaxConfig() {
 export async function enrichWord(word: string): Promise<EnrichResult> {
   const { apiKey, baseUrl, model } = getMinimaxConfig();
 
-  const prompt = `分析单词 "${word}"，返回简短的JSON，中文说明：
-{
-  "prototype": [
-    {"form": "原始形式", "note": "说明（可选）"}
-  ],
-  "variant": [
-    {"form": "变体形式1", "note": "来源或说明"}
-  ],
-  "etymology": [
-    {"form": "词源1", "note": "说明"}
-  ]
-}`;
+  const prompt = `分析单词 "${word}"，返回简短的中文JSON（每项不超过50字）：
+{"prototype":"...","variant":"...","etymology":"..."}`;
 
   const response = await fetch(`${baseUrl}/v1/text/chatcompletion_v2`, {
     method: "POST",
@@ -74,9 +64,9 @@ export async function enrichWord(word: string): Promise<EnrichResult> {
   try {
     const result = JSON.parse(jsonStr) as EnrichResult;
     return {
-      prototype: Array.isArray(result.prototype) ? result.prototype : [],
-      variant: Array.isArray(result.variant) ? result.variant : [],
-      etymology: Array.isArray(result.etymology) ? result.etymology : []
+      prototype: result.prototype || "",
+      variant: result.variant || "",
+      etymology: result.etymology || ""
     };
   } catch {
     // Try to fix truncated JSON by finding the last valid closing brace
@@ -85,9 +75,9 @@ export async function enrichWord(word: string): Promise<EnrichResult> {
       try {
         const result = JSON.parse(jsonStr.slice(0, lastBrace + 1)) as EnrichResult;
         return {
-          prototype: Array.isArray(result.prototype) ? result.prototype : [],
-          variant: Array.isArray(result.variant) ? result.variant : [],
-          etymology: Array.isArray(result.etymology) ? result.etymology : []
+          prototype: result.prototype || "",
+          variant: result.variant || "",
+          etymology: result.etymology || ""
         };
       } catch {
         // fall through to error
