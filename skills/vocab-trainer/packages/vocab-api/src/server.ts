@@ -30,20 +30,76 @@ function groupByLevel(words: Word[]): Record<number, number> {
   return stats;
 }
 
+function getLevelNextReview(words: Word[]): Record<number, string | null> {
+  // For each level, find the earliest next_review time
+  const result: Record<number, string | null> = { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null, 8: null, 9: null };
+  const wordsByLevel: Record<number, Word[]> = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [] };
+
+  words.forEach(w => {
+    wordsByLevel[w.level].push(w);
+  });
+
+  for (let level = 0; level <= 9; level++) {
+    const levelWords = wordsByLevel[level];
+    if (levelWords.length === 0) {
+      result[level] = null;
+      continue;
+    }
+    // Find the earliest next_review
+    let earliest = levelWords[0].next_review;
+    for (let i = 1; i < levelWords.length; i++) {
+      if (levelWords[i].next_review < earliest) {
+        earliest = levelWords[i].next_review;
+      }
+    }
+    result[level] = earliest;
+  }
+
+  return result;
+}
+
+// Group words by their review time for today (Level 0-3)
+function groupWordsByTodayTime(words: Word[]): Record<string, string[]> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+  const result: Record<string, string[]> = {};
+
+  // Only include words that are Level 0-3 and due today
+  words.filter(w => w.level <= 3 && w.next_review >= todayStart.toISOString() && w.next_review < todayEnd.toISOString())
+    .forEach(w => {
+      const reviewDate = new Date(w.next_review);
+      const timeKey = `${reviewDate.getHours().toString().padStart(2, '0')}:${reviewDate.getMinutes().toString().padStart(2, '0')}`;
+      if (!result[timeKey]) {
+        result[timeKey] = [];
+      }
+      result[timeKey].push(w.word);
+    });
+
+  return result;
+}
+
 app.get("/api/status", (c) => {
   const db = getStorage();
   const data = db.loadData();
   const now = getNow();
-  const tomorrow = addMinutes(now, 1440); // 24小时后
-  const todayDue = data.words.filter(w => w.next_review <= now).length;
-  const tomorrowDue = data.words.filter(w => w.next_review > now && w.next_review <= tomorrow).length;
+
+  // Count words that can be reviewed now (Level 0-3 with next_review <= now)
+  const nowDue = data.words.filter(w => w.level <= 3 && w.next_review <= now).length;
+
+  // Count Level 4+ words that can be reviewed now (next_review <= now)
+  const level4PlusDue = data.words.filter(w => w.level >= 4 && w.next_review <= now).length;
 
   return c.json({
     total_words: data.words.length,
     level_stats: groupByLevel(data.words),
+    level_next_review: getLevelNextReview(data.words),
+    level0_3_due_count: nowDue,
+    level4_plus_due_count: level4PlusDue,
+    words_by_time: groupWordsByTodayTime(data.words),
+    review_batch_time: data.review_batch_time,
     streak: data.streak,
-    today_due: todayDue,
-    tomorrow_due: tomorrowDue,
     total_reviews: data.total_reviews
   });
 });
@@ -224,6 +280,31 @@ app.get("/api/words/:word/enrich", async (c) => {
       details: err instanceof Error ? err.message : String(err)
     }, 500);
   }
+});
+
+// GET /api/settings - get settings
+app.get("/api/settings", (c) => {
+  const db = getStorage();
+  const data = db.loadData();
+  return c.json({
+    review_batch_time: data.review_batch_time
+  });
+});
+
+// POST /api/settings - update settings
+app.post("/api/settings", async (c) => {
+  const db = getStorage();
+  const body = await c.req.json();
+
+  if (body.review_batch_time !== undefined) {
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(body.review_batch_time)) {
+      return c.json({ success: false, message: "Invalid time format. Use HH:MM (e.g., 08:30)" }, 400);
+    }
+    db.updateReviewBatchTime(body.review_batch_time);
+  }
+
+  return c.json({ success: true, message: "Settings updated" });
 });
 
 console.log("Starting Vocab-Trainer API server on http://0.0.0.0:3099");

@@ -55,16 +55,24 @@ async function runTests() {
   result = calculateNextReview(8, "pass");
   assert(result.newLevel === 9 && result.intervalMinutes === 86400, `level 8 + pass → level 9 (max), interval 86400分钟 (60天)`);
 
-  // 测试 4: calculateNextReview - fail (重置到 level 0)
-  console.log("\n测试 4: calculateNextReview (fail - 重置到 level 0)");
-  result = calculateNextReview(5, "fail");
-  assert(result.newLevel === 0 && result.intervalMinutes === 20, `level 5 + fail → level 0, interval 20分钟`);
-
-  result = calculateNextReview(9, "fail");
-  assert(result.newLevel === 0 && result.intervalMinutes === 20, `level 9 + fail → level 0, interval 20分钟`);
-
+  // 测试 4: calculateNextReview - fail
+  console.log("\n测试 4: calculateNextReview (fail)");
+  // Level 0-3: reset to level 0
   result = calculateNextReview(0, "fail");
   assert(result.newLevel === 0 && result.intervalMinutes === 20, `level 0 + fail → level 0 (已在最低)`);
+
+  result = calculateNextReview(3, "fail");
+  assert(result.newLevel === 0 && result.intervalMinutes === 20, `level 3 + fail → level 0, interval 20分钟`);
+
+  // Level 4+: keep level unchanged, 20 minutes later
+  result = calculateNextReview(4, "fail");
+  assert(result.newLevel === 4 && result.intervalMinutes === 20, `level 4 + fail → level 4, interval 20分钟`);
+
+  result = calculateNextReview(5, "fail");
+  assert(result.newLevel === 5 && result.intervalMinutes === 20, `level 5 + fail → level 5, interval 20分钟`);
+
+  result = calculateNextReview(9, "fail");
+  assert(result.newLevel === 9 && result.intervalMinutes === 20, `level 9 + fail → level 9, interval 20分钟`);
 
   // 测试 5: calculateNextReview - fuzzy (÷3)
   console.log("\n测试 5: calculateNextReview (fuzzy - ÷3)");
@@ -102,11 +110,12 @@ async function runTests() {
   assert(passResult.results[0].new_level === 1, "level 0 → 1");
   assert(passResult.updatedStreak === 1, "streak 为 1");
 
-  // 测试 7: processReviewFeedbacks - fail (重置到 0)
-  console.log("\n测试 7: processReviewFeedbacks (fail - 重置到 level 0)");
+  // 测试 7: processReviewFeedbacks - fail (Level 4+ keep level)
+  console.log("\n测试 7: processReviewFeedbacks (fail - Level 4+ keep level)");
   storage.addWord({ ...testWord1, word: "testfail", level: 5, next_review: nowStr, interval_minutes: 2880 });
   const failResult = processReviewFeedbacks(storage, [{ word: "testfail", feedback: "fail" }]);
-  assert(failResult.results[0].new_level === 0, "level 5 → 0 (fail 重置)");
+  assert(failResult.results[0].new_level === 5, "level 5 → 5 (fail 保持级别)");
+  assert(failResult.results[0].interval_minutes === 20, "level 5 + fail interval 20分钟");
   assert(failResult.summary.failed === 1, "失败计数为 1");
 
   // 测试 8: processReviewFeedbacks - fuzzy

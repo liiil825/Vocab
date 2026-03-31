@@ -33,6 +33,7 @@ export interface VocabData {
   streak: number;
   last_review_date: string | null;  // ISO8601 datetime
   total_reviews: number;
+  review_batch_time: string;  // HH:mm format, e.g. "08:30"
   words: Word[];
 }
 

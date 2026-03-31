@@ -65,6 +65,7 @@ export interface StorageConnection {
   getDueWords(): Word[];
   updateStats(streak: number, lastReviewDate: string): void;
   updateWordEnrich(word: string, enrich: { prototype: string; variant: VariantEntry[]; etymology: string }): void;
+  updateReviewBatchTime(time: string): void;
   close(): void;
 }
 
@@ -107,7 +108,8 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
       version INTEGER DEFAULT 2,
       streak INTEGER DEFAULT 0,
       last_review_date TEXT,
-      total_reviews INTEGER DEFAULT 0
+      total_reviews INTEGER DEFAULT 0,
+      review_batch_time TEXT DEFAULT '08:30'
     );
 
     CREATE INDEX IF NOT EXISTS idx_words_word_lower ON words(word_lower);
@@ -122,6 +124,13 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
     db.exec("ALTER TABLE words ADD COLUMN etymology TEXT DEFAULT ''");
   } catch {
     // Columns may already exist
+  }
+
+  // Migrate stats: add review_batch_time if not exist
+  try {
+    db.exec("ALTER TABLE stats ADD COLUMN review_batch_time TEXT DEFAULT '08:30'");
+  } catch {
+    // Column may already exist
   }
 
   // Migrate: interval_days -> interval_minutes if needed
@@ -153,15 +162,16 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         streak: statsRow?.streak || 0,
         last_review_date: statsRow?.last_review_date || null,
         total_reviews: statsRow?.total_reviews || 0,
+        review_batch_time: statsRow?.review_batch_time || "08:30",
         words: wordsRows.map(rowToWord)
       };
     },
 
     saveData(data: VocabData): void {
       db.query(`
-        INSERT OR REPLACE INTO stats (id, version, streak, last_review_date, total_reviews)
-        VALUES (1, ?, ?, ?, ?)
-      `).run(data.version, data.streak, data.last_review_date, data.total_reviews);
+        INSERT OR REPLACE INTO stats (id, version, streak, last_review_date, total_reviews, review_batch_time)
+        VALUES (1, ?, ?, ?, ?, ?)
+      `).run(data.version, data.streak, data.last_review_date, data.total_reviews, data.review_batch_time || "08:30");
     },
 
     addWord(word: Word): void {
@@ -293,6 +303,13 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         UPDATE words SET prototype = ?, variant = ?, etymology = ?
         WHERE word_lower = ?
       `).run(enrich.prototype, JSON.stringify(enrich.variant || []), enrich.etymology, word.toLowerCase());
+    },
+
+    updateReviewBatchTime(time: string): void {
+      db.query(`
+        UPDATE stats SET review_batch_time = ?
+        WHERE id = 1
+      `).run(time);
     },
 
     close(): void {

@@ -56,7 +56,12 @@ export function calculateNextReview(
       return { newLevel, intervalMinutes: INTERVALS[newLevel] };
     }
     case "fail":
-      return { newLevel: 0, intervalMinutes: INTERVALS[0] }; // 重置到 level 0 (20分钟)
+      if (currentLevel >= 4) {
+        // Level 4+: keep level unchanged, review again in 20 minutes
+        return { newLevel: currentLevel, intervalMinutes: INTERVALS[0] };
+      }
+      // Level 0-3: reset to level 0 (20分钟)
+      return { newLevel: 0, intervalMinutes: INTERVALS[0] };
     case "fuzzy":
       return {
         newLevel: currentLevel,
