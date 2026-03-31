@@ -42,6 +42,12 @@ function EnrichmentTable({ label, items }: { label: string; items: EnrichItem[] 
         <span className='text-accent'>▶</span> {label}
       </summary>
       <table className='pl-4 text-text-secondary text-sm mt-1 w-full'>
+        <thead>
+          <tr className='border-b border-border'>
+            <th scope='col' className='pr-4 py-1 text-left text-text-muted font-normal'>形式</th>
+            <th scope='col' className='text-text-muted font-normal'>说明</th>
+          </tr>
+        </thead>
         <tbody>
           {items.map((item, i) => (
             <tr key={i} className={i > 0 ? 'border-t border-border' : ''}>
