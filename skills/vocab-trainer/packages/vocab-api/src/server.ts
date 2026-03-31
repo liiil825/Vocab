@@ -62,6 +62,28 @@ app.get("/api/review", (c) => {
   });
 });
 
+app.get("/api/review/next", (c) => {
+  const db = getStorage();
+  const data = db.loadData();
+  const now = getNow();
+
+  // Find the word with earliest next_review that is in the future
+  const upcoming = data.words
+    .filter(w => w.next_review > now)
+    .sort((a, b) => a.next_review.localeCompare(b.next_review));
+
+  if (upcoming.length === 0) {
+    return c.json(null);
+  }
+
+  const next = upcoming[0];
+  return c.json({
+    word: next.word,
+    next_review: next.next_review,
+    interval_minutes: next.interval_minutes
+  });
+});
+
 app.post("/api/review/feedback", async (c) => {
   const db = getStorage();
   const { feedbacks } = await c.req.json();

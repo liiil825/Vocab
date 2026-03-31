@@ -51,6 +51,7 @@ export type FeedbackResult = {
 
 export const getStatus = () => fetch(`${API}/status`).then(r => r.json());
 export const getReview = () => fetch(`${API}/review`).then(r => r.json());
+export const getNextReview = () => fetch(`${API}/review/next`).then(r => r.json());
 export const getWords = (filter?: string) => fetch(`${API}/words${filter ? `?filter=${filter}` : ''}`).then(r => r.json());
 export const getWordDetail = (word: string) => fetch(`${API}/words/${encodeURIComponent(word)}`).then(r => r.json());
 export const postFeedback = (feedbacks: FeedbackItem[]) => fetch(`${API}/review/feedback`, {

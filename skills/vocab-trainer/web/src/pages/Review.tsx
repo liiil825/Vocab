@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getReview, postFeedback, getWordEnrich, type EnrichData } from '../api';
+import { getReview, postFeedback, getWordEnrich, getNextReview, type EnrichData } from '../api';
 import { playSound } from '../hooks/useSound';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -44,13 +44,38 @@ export default function Review() {
   const [enrichedData, setEnrichedData] = useState<Record<string, EnrichData>>({});
   const [enrichLoading, setEnrichLoading] = useState(false);
   const { showConfirm } = useModal();
+  const [nextReview, setNextReview] = useState<{ word: string; next_review: string; interval_minutes: number } | null>(null);
+  const [countdown, setCountdown] = useState('');
 
   useEffect(() => {
     getReview().then((data: any) => {
       setWords(data.words || []);
       setLoading(false);
     });
+    getNextReview().then((data: any) => {
+      setNextReview(data);
+    });
   }, []);
+
+  useEffect(() => {
+    if (!nextReview) return;
+    const updateCountdown = () => {
+      const now = new Date();
+      const target = new Date(nextReview.next_review);
+      const diff = target.getTime() - now.getTime();
+      if (diff <= 0) {
+        setCountdown('00:00:00');
+        return;
+      }
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+    };
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [nextReview]);
 
   const enrichCurrentWord = (word: string) => {
     setEnrichLoading(true);
@@ -149,7 +174,14 @@ export default function Review() {
     <FadeIn>
       <Card className='text-center py-16'>
         <p className='text-xl text-text-secondary'>今天没有需要复习的单词！</p>
-        <p className='text-text-muted text-sm mt-2'>明天再来吧</p>
+        {nextReview && countdown && (
+          <div className='mt-4'>
+            <p className='text-text-muted text-sm'>下一个单词: <span className='text-accent font-medium'>{nextReview.word}</span></p>
+            <p className='text-3xl font-mono text-accent mt-2'>{countdown}</p>
+            <p className='text-text-muted text-xs mt-1'>后可复习</p>
+          </div>
+        )}
+        {!nextReview && <p className='text-text-muted text-sm mt-2'>明天再来吧</p>}
       </Card>
     </FadeIn>
   );
