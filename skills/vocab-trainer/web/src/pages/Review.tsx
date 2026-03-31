@@ -104,20 +104,46 @@ export default function Review() {
     </div>
   );
 
-  if (result) return (
-    <FadeIn>
-      <Card className='text-center'>
-        <h2 className='text-2xl font-bold text-text-primary mb-4'>复习完成！</h2>
-        <div className='flex justify-center gap-8 text-sm'>
-          <div><span className='text-success text-xl font-bold'>{result.summary?.passed ?? 0}</span><span className='text-text-secondary ml-1'>通过</span></div>
-          <div><span className='text-danger text-xl font-bold'>{result.summary?.failed ?? 0}</span><span className='text-text-secondary ml-1'>失败</span></div>
-          <div><span className='text-warning text-xl font-bold'>{result.summary?.fuzzy ?? 0}</span><span className='text-text-secondary ml-1'>模糊</span></div>
-        </div>
-        <p className='mt-4 text-accent font-medium'>连续 {result.updated_streak} 天</p>
-        <Button className='mt-6' onClick={() => window.location.reload()}>再来一次</Button>
-      </Card>
-    </FadeIn>
-  );
+  if (result) {
+    const failedWords = result.results.filter(r => r.new_level === 0).map(r => r.word);
+    const fuzzyWords = result.results.filter(r => r.new_level === r.old_level && r.new_level !== 0).map(r => r.word);
+
+    return (
+      <FadeIn>
+        <Card className='text-center'>
+          <h2 className='text-2xl font-bold text-text-primary mb-4'>复习完成！</h2>
+          <div className='flex justify-center gap-8 text-sm'>
+            <div><span className='text-success text-xl font-bold'>{result.summary?.passed ?? 0}</span><span className='text-text-secondary ml-1'>通过</span></div>
+            <div><span className='text-danger text-xl font-bold'>{result.summary?.failed ?? 0}</span><span className='text-text-secondary ml-1'>失败</span></div>
+            <div><span className='text-warning text-xl font-bold'>{result.summary?.fuzzy ?? 0}</span><span className='text-text-secondary ml-1'>模糊</span></div>
+          </div>
+
+          {/* Word lists */}
+          <div className='mt-5 flex flex-col gap-3 text-left'>
+            {failedWords.length > 0 && (
+              <div className='flex flex-wrap gap-2 justify-center'>
+                <span className='text-danger text-xs font-medium'>失败:</span>
+                {failedWords.map(w => (
+                  <span key={w} className='px-2 py-0.5 bg-danger/20 text-danger text-xs rounded-full'>{w}</span>
+                ))}
+              </div>
+            )}
+            {fuzzyWords.length > 0 && (
+              <div className='flex flex-wrap gap-2 justify-center'>
+                <span className='text-warning text-xs font-medium'>模糊:</span>
+                {fuzzyWords.map(w => (
+                  <span key={w} className='px-2 py-0.5 bg-warning/20 text-warning text-xs rounded-full'>{w}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <p className='mt-4 text-accent font-medium'>连续 {result.updated_streak} 天</p>
+          <Button className='mt-6' onClick={() => window.location.reload()}>再来一次</Button>
+        </Card>
+      </FadeIn>
+    );
+  }
 
   if (words.length === 0) return (
     <FadeIn>
