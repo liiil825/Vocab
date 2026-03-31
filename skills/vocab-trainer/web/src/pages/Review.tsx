@@ -74,6 +74,15 @@ export default function Review() {
     }
   };
 
+  const handleEndReview = () => {
+    if (feedbacks.length === 0) {
+      alert('还没有复习任何单词');
+      return;
+    }
+    if (!confirm(`确定结束复习？将提交 ${feedbacks.length} 个已复习单词。`)) return;
+    postFeedback(feedbacks).then(setResult);
+  };
+
   if (loading) return (
     <div className='flex items-center justify-center h-64'>
       <div className='text-text-secondary'>加载中...</div>
@@ -113,13 +122,23 @@ export default function Review() {
       {/* Progress */}
       <div className='flex items-center justify-between text-sm text-text-secondary'>
         <span>进度: {currentIndex + 1} / {words.length}</span>
-        <div className='w-32 h-1.5 bg-surface-elevated rounded-full overflow-hidden'>
-          <motion.div
-            className='h-full bg-accent rounded-full'
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.4 }}
-          />
+        <div className='flex items-center gap-4'>
+          {feedbacks.length > 0 && feedbacks.length < words.length && (
+            <button
+              onClick={handleEndReview}
+              className='text-xs px-3 py-1 rounded-full bg-warning/20 text-warning hover:bg-warning/30 transition-colors'
+            >
+              结束复习 ({feedbacks.length})
+            </button>
+          )}
+          <div className='w-32 h-1.5 bg-surface-elevated rounded-full overflow-hidden'>
+            <motion.div
+              className='h-full bg-accent rounded-full'
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.4 }}
+            />
+          </div>
         </div>
       </div>
 

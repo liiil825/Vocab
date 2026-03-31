@@ -20,4 +20,4 @@ export type {
 export { createStorage, createStorageFromEnv, type StorageConnection } from "./storage.js";
 
 // Algorithm
-export { getToday, addDays, calculateNextReview, processReviewFeedbacks, type ProcessFeedbacksResult } from "./algorithm.js";
+export { getToday, getNow, addDays, addMinutes, calculateNextReview, processReviewFeedbacks, type ProcessFeedbacksResult } from "./algorithm.js";
