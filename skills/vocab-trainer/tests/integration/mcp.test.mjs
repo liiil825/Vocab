@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 /**
- * MCP 集成测试 - 测试所有 MCP 工具的基本功能
+ * MCP 集成测试 v2 - 测试所有 MCP 工具的基本功能
  */
 import { McpClient } from "../helpers/mcp-client.mjs";
 import { setupTestData, teardownTestData, resetTestData, TEST_DATA_FILE } from "../helpers/data-env.mjs";
 
-console.log("=== MCP 集成测试 ===\n");
+console.log("=== MCP 集成测试 v2 ===\n");
 
 let passed = 0;
 let failed = 0;
@@ -36,7 +36,7 @@ async function runTests() {
   assert(status1.total_words === 0, `总词数: 0`);
   assert(status1.streak === 0, `streak: 0`);
 
-  // 测试 2: vocab_add_word
+  // 测试 2: vocab_add_word (新算法: 首次复习是20分钟后)
   console.log("\n测试 2: vocab_add_word");
   const addResult = await client.callTool("vocab_add_word", {
     word: "sparingly",
@@ -64,13 +64,13 @@ async function runTests() {
   assert(status2.total_words === 1, `总词数: 1`);
 
   // 测试 5: vocab_review
-  // sparingly 的 next_review = tomorrow，所以 today 没有待复习
+  // 新算法: sparingly 的 next_review = 20分钟后，应该在待复习列表中
   console.log("\n测试 5: vocab_review");
   const review1 = await client.callTool("vocab_review");
-  assert(review1.count === 0, `待复习: 0（sparingly 明天才到期）`);
+  assert(review1.count === 1, `待复习: 1（sparingly 刚添加，20分钟后就到期）`);
 
-  // 测试 6: vocab_review_feedback
-  console.log("\n测试 6: vocab_review_feedback");
+  // 测试 6: vocab_review_feedback (pass)
+  console.log("\n测试 6: vocab_review_feedback (pass)");
   const feedback1 = await client.callTool("vocab_review_feedback", {
     feedbacks: [{ word: "sparingly", feedback: "pass" }]
   });
@@ -82,8 +82,9 @@ async function runTests() {
   console.log("\n测试 7: vocab_get_word_detail");
   const detail = await client.callTool("vocab_get_word_detail", { word: "sparingly" });
   assert(detail.word === "sparingly", `返回正确单词`);
-  assert(detail.level === 1, `level 更新为 1`);
+  assert(detail.level === 1, `level 更新为 1 (pass后升级)`);
   assert(detail.review_count === 1, `review_count: 1`);
+  assert(detail.interval_minutes === 60, `interval_minutes: 60 (1小时)`);
 
   // 测试 8: vocab_list_words
   console.log("\n测试 8: vocab_list_words");

@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
- * 存储层单元测试
+ * 存储层单元测试 v2
  */
 import { createStorage, createStorageFromEnv, closeDb } from "../../packages/vocab-core/src/storage.js";
-import { getToday, addDays } from "../../packages/vocab-core/src/algorithm.js";
+import { getNow, addMinutes } from "../../packages/vocab-core/src/algorithm.js";
 import { setupTestData, teardownTestData, resetTestData, readTestData } from "../helpers/data-env.mjs";
 
-console.log("=== 存储层单元测试 ===\n");
+console.log("=== 存储层单元测试 v2 ===\n");
 
 let passed = 0;
 let failed = 0;
@@ -21,6 +21,7 @@ function assert(condition, message) {
   }
 }
 
+const nowStr = getNow();
 const testWord = {
   word: "testword",
   meaning: "测试单词",
@@ -29,10 +30,10 @@ const testWord = {
   example: "This is a test.",
   example_cn: "这是一个测试。",
   source: "test",
-  added: getToday(),
+  added: nowStr,
   level: 0,
-  next_review: getToday(),
-  interval_days: 1,
+  next_review: nowStr,
+  interval_minutes: 20,
   error_count: 0,
   review_count: 0,
   history: []
@@ -73,12 +74,12 @@ async function runTests() {
 
   // 测试 5: updateWord
   console.log("\n测试 5: updateWord()");
-  const updated = storage.updateWord("word1", { level: 3, interval_days: 7 });
+  const updated = storage.updateWord("word1", { level: 3, interval_minutes: 240 });
   assert(updated?.level === 3, "level 更新为 3");
-  assert(updated?.interval_days === 7, "interval_days 更新为 7");
+  assert(updated?.interval_minutes === 240, "interval_minutes 更新为 240");
   const verifyUpdate = storage.getWord("word1");
   assert(verifyUpdate?.level === 3, "持久化验证 level");
-  assert(verifyUpdate?.interval_days === 7, "持久化验证 interval_days");
+  assert(verifyUpdate?.interval_minutes === 240, "持久化验证 interval_minutes");
 
   // 测试 6: updateWord 不存在的词
   console.log("\n测试 6: updateWord() 不存在的词");
@@ -94,26 +95,30 @@ async function runTests() {
   const removeNonExist = storage.removeWord("nonexistent");
   assert(removeNonExist === false, "移除不存在的词返回 false");
 
-  // 测试 8: getDueWords
+  // 测试 8: getDueWords (datetime 比较)
   console.log("\n测试 8: getDueWords()");
-  storage.addWord({ ...testWord, word: "dueword", next_review: getToday() });
-  storage.addWord({ ...testWord, word: "futureword", next_review: "2099-01-01" });
+  const pastTime = addMinutes(getNow(), -60); // 1小时前 (已到期)
+  const futureTime = addMinutes(getNow(), 1440); // 24小时后 (未到期)
+  storage.addWord({ ...testWord, word: "dueword", next_review: pastTime, interval_minutes: 20 });
+  storage.addWord({ ...testWord, word: "futureword", next_review: futureTime, interval_minutes: 1440 });
   const due = storage.getDueWords();
   assert(due.length === 1, "有 1 个到期词");
   assert(due[0].word === "dueword", "到期的词正确");
 
   // 测试 9: getWordsByFilter
   console.log("\n测试 9: getWordsByFilter()");
-  storage.addWord({ ...testWord, word: "new1", level: 0 });
-  storage.addWord({ ...testWord, word: "learn1", level: 2 });
-  storage.addWord({ ...testWord, word: "hard1", level: 1, error_count: 2 });
-  storage.addWord({ ...testWord, word: "master1", level: 5 });
+  storage.addWord({ ...testWord, word: "new1", level: 0, next_review: pastTime });
+  storage.addWord({ ...testWord, word: "learn1", level: 2, next_review: pastTime });
+  storage.addWord({ ...testWord, word: "learn2", level: 4, next_review: pastTime });
+  storage.addWord({ ...testWord, word: "hard1", level: 1, error_count: 2, next_review: pastTime });
+  storage.addWord({ ...testWord, word: "master1", level: 8, next_review: pastTime });
+  storage.addWord({ ...testWord, word: "master2", level: 9, next_review: pastTime });
 
-  assert(storage.getWordsByFilter("new").length === 3, `new 筛选: 3 个`);
-  assert(storage.getWordsByFilter("learning").length === 2, `learning 筛选: 2 个`);
-  assert(storage.getWordsByFilter("hard").length === 1, "hard 筛选: 1 个");
-  assert(storage.getWordsByFilter("mastered").length === 1, "mastered 筛选: 1 个");
-  assert(storage.getWordsByFilter("all").length === 6, `all 筛选: 6 个`);
+  assert(storage.getWordsByFilter("new").length === 3, `new 筛选: 3 个 (level=0: dueword, futureword, new1)`);
+  assert(storage.getWordsByFilter("learning").length === 3, `learning 筛选: 3 个 (level 1-4: learn1, learn2, hard1)`);
+  assert(storage.getWordsByFilter("hard").length === 1, "hard 筛选: 1 个 (level <=2 且有错误: hard1)");
+  assert(storage.getWordsByFilter("mastered").length === 2, "mastered 筛选: 2 个 (level >=8: master1, master2)");
+  assert(storage.getWordsByFilter("all").length === 8, `all 筛选: 8 个`);
 
   teardownTestData();
 

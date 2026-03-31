@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Word, createStorageFromEnv } from "vocab-core";
-import { getToday, addDays, processReviewFeedbacks } from "vocab-core/algorithm";
+import { getNow, addMinutes, processReviewFeedbacks } from "vocab-core/algorithm";
 import type { StorageConnection } from "vocab-core/storage";
 
 // Create shared storage instance for the MCP server
@@ -74,8 +74,8 @@ function createTools(): Tool[] {
           };
         }
 
-        const today = getToday();
-        const tomorrow = addDays(today, 1);
+        const now = getNow();
+        const firstReview = now; // 新词立即可复习
 
         const newWord: Word = {
           word: wordLower,
@@ -85,10 +85,10 @@ function createTools(): Tool[] {
           example: args.example || "",
           example_cn: args.example_cn || "",
           source: args.source || "user",
-          added: today,
+          added: now,
           level: 0,
-          next_review: tomorrow,
-          interval_days: 1,
+          next_review: firstReview,
+          interval_minutes: 20,
           error_count: 0,
           review_count: 0,
           history: [],
@@ -103,8 +103,8 @@ function createTools(): Tool[] {
           success: true,
           word: args.word,
           level: 0,
-          next_review: tomorrow,
-          message: `已添加 "${args.word}"，首次复习：${tomorrow}`
+          next_review: firstReview,
+          message: `已添加 "${args.word}"，可立即复习`
         };
       }
     },
@@ -144,16 +144,16 @@ function createTools(): Tool[] {
       execute: async () => {
         const db = getStorage();
         const data = db.loadData();
-        const today = getToday();
-        const tomorrow = addDays(today, 1);
+        const now = getNow();
+        const tomorrow = addMinutes(now, 1440); // 24小时后
 
-        const levelStats: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        const levelStats: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
         data.words.forEach(w => {
           levelStats[w.level] = (levelStats[w.level] || 0) + 1;
         });
 
-        const todayDue = data.words.filter(w => w.next_review <= today).length;
-        const tomorrowDue = data.words.filter(w => w.next_review === tomorrow).length;
+        const todayDue = data.words.filter(w => w.next_review <= now).length;
+        const tomorrowDue = data.words.filter(w => w.next_review > now && w.next_review <= tomorrow).length;
 
         return {
           total_words: data.words.length,

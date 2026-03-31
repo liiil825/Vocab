@@ -29,7 +29,7 @@ function rowToWord(row: any): Word {
     added: row.added,
     level: row.level,
     next_review: row.next_review,
-    interval_days: row.interval_days,
+    interval_minutes: row.interval_minutes,
     error_count: row.error_count,
     review_count: row.review_count,
     history: JSON.parse(row.history || "[]") as ReviewRecord[],
@@ -81,7 +81,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
       added TEXT NOT NULL,
       level INTEGER DEFAULT 0,
       next_review TEXT NOT NULL,
-      interval_days INTEGER DEFAULT 1,
+      interval_minutes INTEGER DEFAULT 20,
       error_count INTEGER DEFAULT 0,
       review_count INTEGER DEFAULT 0,
       history TEXT DEFAULT '[]',
@@ -92,7 +92,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
 
     CREATE TABLE IF NOT EXISTS stats (
       id INTEGER PRIMARY KEY DEFAULT 1,
-      version INTEGER DEFAULT 1,
+      version INTEGER DEFAULT 2,
       streak INTEGER DEFAULT 0,
       last_review_date TEXT,
       total_reviews INTEGER DEFAULT 0
@@ -112,10 +112,23 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
     // Columns may already exist
   }
 
+  // Migrate: interval_days -> interval_minutes if needed
+  try {
+    const cols = db.query("PRAGMA table_info(words)").all() as any[];
+    const hasIntervalDays = cols.some(c => c.name === 'interval_days');
+    const hasIntervalMinutes = cols.some(c => c.name === 'interval_minutes');
+    if (hasIntervalDays && !hasIntervalMinutes) {
+      db.exec("ALTER TABLE words ADD COLUMN interval_minutes INTEGER");
+      db.exec("UPDATE words SET interval_minutes = interval_days * 1440 WHERE interval_minutes IS NULL");
+    }
+  } catch {
+    // Migration may have already been done
+  }
+
   // Ensure stats row exists
   const stats = db.query("SELECT * FROM stats WHERE id = 1").get();
   if (!stats) {
-    db.query("INSERT INTO stats (id, version, streak, total_reviews) VALUES (1, 1, 0, 0)").run();
+    db.query("INSERT INTO stats (id, version, streak, total_reviews) VALUES (1, 2, 0, 0)").run();
   }
 
   return {
@@ -141,7 +154,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
 
     addWord(word: Word): void {
       db.query(`
-        INSERT INTO words (word, word_lower, meaning, phonetic, pos, example, example_cn, source, added, level, next_review, interval_days, error_count, review_count, history, prototype, variant, etymology)
+        INSERT INTO words (word, word_lower, meaning, phonetic, pos, example, example_cn, source, added, level, next_review, interval_minutes, error_count, review_count, history, prototype, variant, etymology)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         word.word,
@@ -155,7 +168,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         word.added,
         word.level,
         word.next_review,
-        word.interval_days,
+        word.interval_minutes,
         word.error_count,
         word.review_count,
         JSON.stringify(word.history),
@@ -184,7 +197,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         UPDATE words SET
           word = ?, word_lower = ?, meaning = ?, phonetic = ?, pos = ?,
           example = ?, example_cn = ?, source = ?, added = ?, level = ?,
-          next_review = ?, interval_days = ?, error_count = ?, review_count = ?, history = ?,
+          next_review = ?, interval_minutes = ?, error_count = ?, review_count = ?, history = ?,
           prototype = ?, variant = ?, etymology = ?
         WHERE word_lower = ?
       `).run(
@@ -199,7 +212,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         updated.added,
         updated.level,
         updated.next_review,
-        updated.interval_days,
+        updated.interval_minutes,
         updated.error_count,
         updated.review_count,
         JSON.stringify(updated.history),
@@ -221,7 +234,7 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
     },
 
     getWordsByFilter(filter?: string): Word[] {
-      const today = new Date().toISOString().split("T")[0];
+      const now = new Date().toISOString();
 
       let rows: any[];
       switch (filter) {
@@ -229,16 +242,16 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
           rows = db.query("SELECT * FROM words WHERE level = 0").all();
           break;
         case "learning":
-          rows = db.query("SELECT * FROM words WHERE level >= 1 AND level <= 3").all();
+          rows = db.query("SELECT * FROM words WHERE level >= 1 AND level <= 4").all();
           break;
         case "hard":
-          rows = db.query("SELECT * FROM words WHERE level <= 1 AND error_count >= 1").all();
+          rows = db.query("SELECT * FROM words WHERE level <= 2 AND error_count >= 1").all();
           break;
         case "mastered":
-          rows = db.query("SELECT * FROM words WHERE level = 5").all();
+          rows = db.query("SELECT * FROM words WHERE level >= 8").all(); // 8-9 are mastered
           break;
         case "today":
-          rows = db.query("SELECT * FROM words WHERE next_review <= ?").all(today);
+          rows = db.query("SELECT * FROM words WHERE next_review <= ?").all(now);
           break;
         default:
           rows = db.query("SELECT * FROM words").all();
@@ -248,10 +261,10 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
     },
 
     getDueWords(): Word[] {
-      const today = new Date().toISOString().split("T")[0];
+      const now = new Date().toISOString();
       const rows = db.query(
         "SELECT * FROM words WHERE next_review <= ?"
-      ).all(today);
+      ).all(now);
 
       return rows.map(rowToWord);
     },

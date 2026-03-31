@@ -17,7 +17,7 @@ type WordDetail = {
   added: string;
   level: number;
   next_review: string;
-  interval_days: number;
+  interval_minutes: number;
   error_count: number;
   review_count: number;
   history: { date: string; result: string }[];
@@ -27,7 +27,7 @@ type FeedbackItem = { word: string; feedback: 'pass' | 'fail' | 'fuzzy' };
 
 type FeedbackResult = {
   success: boolean;
-  results: { word: string; old_level: number; new_level: number; next_review: string; interval_days: number }[];
+  results: { word: string; old_level: number; new_level: number; next_review: string; interval_minutes: number }[];
   summary: { passed: number; failed: number; fuzzy: number };
   updated_streak: number;
   message: string;

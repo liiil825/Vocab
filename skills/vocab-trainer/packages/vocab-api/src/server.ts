@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { Word, createStorageFromEnv, processReviewFeedbacks, getToday, addDays } from "vocab-core";
+import { Word, createStorageFromEnv, processReviewFeedbacks, getNow, addMinutes } from "vocab-core";
 import { enrichWord } from "./llm.js";
 import type { StorageConnection } from "vocab-core/storage";
 
@@ -23,7 +23,7 @@ app.use("*", cors({
 }));
 
 function groupByLevel(words: Word[]): Record<number, number> {
-  const stats: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const stats: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
   words.forEach(w => {
     stats[w.level] = (stats[w.level] || 0) + 1;
   });
@@ -33,10 +33,10 @@ function groupByLevel(words: Word[]): Record<number, number> {
 app.get("/api/status", (c) => {
   const db = getStorage();
   const data = db.loadData();
-  const today = getToday();
-  const tomorrow = addDays(today, 1);
-  const todayDue = data.words.filter(w => w.next_review <= today).length;
-  const tomorrowDue = data.words.filter(w => w.next_review === tomorrow).length;
+  const now = getNow();
+  const tomorrow = addMinutes(now, 1440); // 24小时后
+  const todayDue = data.words.filter(w => w.next_review <= now).length;
+  const tomorrowDue = data.words.filter(w => w.next_review > now && w.next_review <= tomorrow).length;
 
   return c.json({
     total_words: data.words.length,
@@ -108,8 +108,8 @@ app.post("/api/words", async (c) => {
     }, 400);
   }
 
-  const today = getToday();
-  const tomorrow = addDays(today, 1);
+  const now = getNow();
+  const firstReview = now; // 新词立即可复习
 
   const newWord: Word = {
     word: body.word,
@@ -119,10 +119,10 @@ app.post("/api/words", async (c) => {
     example: body.example || "",
     example_cn: body.example_cn || "",
     source: body.source || "user",
-    added: today,
+    added: now,
     level: 0,
-    next_review: tomorrow,
-    interval_days: 1,
+    next_review: firstReview,
+    interval_minutes: 20,
     error_count: 0,
     review_count: 0,
     history: [],
@@ -137,8 +137,8 @@ app.post("/api/words", async (c) => {
     success: true,
     word: body.word,
     level: 0,
-    next_review: tomorrow,
-    message: `已添加 "${body.word}"，首次复习：${tomorrow}`
+    next_review: firstReview,
+    message: `已添加 "${body.word}"，可立即复习`
   });
 });
 

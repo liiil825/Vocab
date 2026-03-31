@@ -113,10 +113,12 @@ CREATE INDEX idx_words_level ON words(level);
 
 ### 间隔重复算法 (vocab-core/src/algorithm.ts)
 
-- Level 0-5 对应间隔: [1, 2, 4, 7, 15, 30] 天
-- `pass`: level++, interval 翻倍
-- `fail`: level 重置为 0, interval = 1
-- `fuzzy`: level 不变, interval 减半
+艾宾浩斯记忆曲线改进版:
+- Level 0-9 对应间隔: [20分钟, 1小时, 4小时, 12小时, 1天, 2天, 7天, 15天, 30天, 60天]
+- `pass`: level++, interval 使用新级别对应间隔
+- `fail`: level 重置为 0, interval = 20分钟
+- `fuzzy`: level 不变, interval = 上一个间隔 ÷3 (最低20分钟)
+- Streak: 24小时内有复习即连续
 
 ### MCP Tools (vocab-mcp/src/tools.ts)
 

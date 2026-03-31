@@ -78,9 +78,9 @@ CREATE TABLE words (
   example_cn TEXT DEFAULT '',
   source TEXT DEFAULT 'user',
   added TEXT NOT NULL,
-  level INTEGER DEFAULT 0,
-  next_review TEXT NOT NULL,
-  interval_days INTEGER DEFAULT 1,
+  level INTEGER DEFAULT 0,              -- 0-9
+  next_review TEXT NOT NULL,            -- ISO8601 datetime
+  interval_minutes INTEGER DEFAULT 20,  -- 间隔分钟数
   error_count INTEGER DEFAULT 0,
   review_count INTEGER DEFAULT 0,
   history TEXT DEFAULT '[]',
@@ -91,34 +91,34 @@ CREATE TABLE words (
 
 CREATE TABLE stats (
   id INTEGER PRIMARY KEY DEFAULT 1,
-  version INTEGER DEFAULT 1,
+  version INTEGER DEFAULT 2,            -- schema version 2
   streak INTEGER DEFAULT 0,
-  last_review_date TEXT,
+  last_review_date TEXT,               -- ISO8601 datetime
   total_reviews INTEGER DEFAULT 0
 );
 ```
 
 ### 单词字段
 
-| 字段            | 说明                                          |
-| --------------- | --------------------------------------------- |
-| `word`          | 单词本身（小写存储）                          |
-| `meaning`       | 中文释义                                      |
-| `phonetic`      | 音标（如 `/ˈspeərɪŋli/`）                     |
-| `pos`           | 词性 (n/v/adj/adv/prep/conj/phrase)           |
-| `example`       | 含该词的英文例句                              |
-| `example_cn`    | 例句中文翻译                                  |
-| `source`        | 来源（用户手动添加 / /eng 分析 / 阅读材料等） |
-| `added`         | 添加日期 (YYYY-MM-DD)                         |
-| `level`         | 掌握等级 0-5                                  |
-| `next_review`   | 下次复习日期 (YYYY-MM-DD)                     |
-| `interval_days` | 当前间隔天数                                  |
-| `error_count`   | 累计错误次数                                  |
-| `review_count`  | 累计复习次数                                  |
-| `history`       | 复习历史记录数组（JSON 格式）                 |
-| `prototype`     | 词根                                          |
-| `variant`       | 变体                                          |
-| `etymology`     | 词源                                          |
+| 字段              | 说明                                          |
+| ----------------- | --------------------------------------------- |
+| `word`            | 单词本身（小写存储）                          |
+| `meaning`         | 中文释义                                      |
+| `phonetic`        | 音标（如 `/ˈspeərɪŋli/`）                     |
+| `pos`             | 词性 (n/v/adj/adv/prep/conj/phrase)           |
+| `example`         | 含该词的英文例句                              |
+| `example_cn`      | 例句中文翻译                                  |
+| `source`          | 来源（用户手动添加 / /eng 分析 / 阅读材料等） |
+| `added`           | 添加时间 (ISO8601 datetime)                   |
+| `level`           | 掌握等级 0-9                                  |
+| `next_review`     | 下次复习时间 (ISO8601 datetime)               |
+| `interval_minutes`| 当前间隔分钟数                                |
+| `error_count`     | 累计错误次数                                  |
+| `review_count`    | 累计复习次数                                  |
+| `history`         | 复习历史记录数组（JSON 格式）                 |
+| `prototype`       | 词根                                          |
+| `variant`         | 变体                                          |
+| `etymology`       | 词源                                          |
 
 ### history 数组条目
 
@@ -130,32 +130,41 @@ CREATE TABLE stats (
 ## 掌握等级 (level)
 
 ```
-0 — 🆕 新词      尚未复习
-1 — 😰 初识      复习过 1 次，仍需强化
-2 — 🙂 眼熟      复习过 2-3 次，大概记得
-3 — 😊 熟悉      复习过 4-5 次，基本掌握
-4 — 💪 巩固      复习过 6+ 次，较长时间未忘
-5 — ✅ 掌握      连续多次正确，已牢固记忆
+0 — 🆕 新词      尚未复习 / 刚添加
+1 — ⏰ 初记      已复习 1 次
+2 — 📝 短记      已复习 2 次
+3 — 🔄 强化      已复习 3 次，进入中期巩固
+4 — 💪 过渡      间隔 1 天，长期记忆过渡期
+5 — 📈 长期      间隔 2 天，进入长期记忆
+6 — 🧠 深度      间隔 7 天，深度记忆
+7 — ⭐ 持久      间隔 15 天，持久记忆
+8 — 🏆 专家      间隔 30 天，专家级
+9 — ✅ 大师      间隔 60 天，完全掌握
 ```
 
 ## 艾宾浩斯复习间隔
 
 ```
-正确 → 推进到下一间隔
-错误 → 重置为第 1 天间隔，level 降 1 级（最低降到 0）
-模糊 → 间隔减半（最小为 1 天），level 不变
+正确 (pass) → 推进到下一间隔
+错误 (fail) → 重置为 level 0，间隔 20 分钟
+模糊 (fuzzy) → 间隔 ÷3（最小 20 分钟），level 不变
+连续复习 (streak) → 24 小时内有复习即连续
 
-┌─────────────────────────────────────────────────────┐
-│  Level 0 → 1    间隔 1 天                            │
-│  Level 1 → 2    间隔 2 天                            │
-│  Level 2 → 3    间隔 4 天                            │
-│  Level 3 → 4    间隔 7 天                            │
-│  Level 4 → 5    间隔 15 天                           │
-│  Level 5 (已掌握) 间隔 30 天 → 60 天 → 90 天         │
-│                                                     │
-│  Level 5 连续 3 次 pass → 视为永久掌握，不再主动复习  │
-│  任何级别答错 → 间隔重置为 1 天，level = max(0, -1)  │
-└─────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│  Level 0    间隔 20 分钟    🆕 新词                           │
+│  Level 1    间隔 1 小时    ⏰ 初次记忆                        │
+│  Level 2    间隔 4 小时    📝 短期强化                        │
+│  Level 3    间隔 12 小时   🔄 中期巩固                        │
+│  Level 4    间隔 1 天      💪 过渡期                          │
+│  Level 5    间隔 2 天      📈 长期记忆                        │
+│  Level 6    间隔 7 天      🧠 深度记忆                        │
+│  Level 7    间隔 15 天     ⭐ 持久记忆                        │
+│  Level 8    间隔 30 天     🏆 专家级                          │
+│  Level 9    间隔 60 天     ✅ 完全掌握                         │
+└───────────────────────────────────────────────────────────────┘
+
+新增词首次复习: 立即可复习（无需等待）
+连续复习 streak: 24 小时内有复习即保持连续
 ```
 
 ## 子命令处理流程

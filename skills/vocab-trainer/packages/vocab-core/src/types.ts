@@ -1,5 +1,5 @@
 export interface ReviewRecord {
-  date: string;          // 复习日期 (YYYY-MM-DD)
+  date: string;          // 复习时间 (ISO8601 datetime)
   result: "pass" | "fail" | "fuzzy";
 }
 
@@ -12,9 +12,9 @@ export interface Word {
   example_cn: string;
   source: string;
   added: string;
-  level: number;
-  next_review: string;
-  interval_days: number;
+  level: number;              // 0-9
+  next_review: string;         // ISO8601 datetime
+  interval_minutes: number;    // 间隔分钟数
   error_count: number;
   review_count: number;
   history: ReviewRecord[];
@@ -26,7 +26,7 @@ export interface Word {
 export interface VocabData {
   version: number;
   streak: number;
-  last_review_date: string | null;
+  last_review_date: string | null;  // ISO8601 datetime
   total_reviews: number;
   words: Word[];
 }
@@ -40,8 +40,8 @@ export interface ReviewResult {
   word: string;
   old_level: number;
   new_level: number;
-  next_review: string;
-  interval_days: number;
+  next_review: string;       // ISO8601 datetime
+  interval_minutes: number;  // 间隔分钟数
 }
 
 export interface ReviewSummary {

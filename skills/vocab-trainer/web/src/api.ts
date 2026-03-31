@@ -15,7 +15,7 @@ export type WordDetail = WordSummary & {
   example_cn: string;
   source: string;
   added: string;
-  interval_days: number;
+  interval_minutes: number;
   review_count: number;
   history: { date: string; result: string }[];
 }
@@ -43,7 +43,7 @@ export type FeedbackItem = {
 
 export type FeedbackResult = {
   success: boolean;
-  results: { word: string; old_level: number; new_level: number; next_review: string; interval_days: number }[];
+  results: { word: string; old_level: number; new_level: number; next_review: string; interval_minutes: number }[];
   summary: { passed: number; failed: number; fuzzy: number };
   updated_streak: number;
   message: string;
@@ -58,7 +58,7 @@ export const postFeedback = (feedbacks: FeedbackItem[]) => fetch(`${API}/review/
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ feedbacks })
 }).then(r => r.json());
-export const postWord = (word: Omit<WordDetail, 'level' | 'next_review' | 'interval_days' | 'error_count' | 'review_count' | 'history' | 'added'>) => fetch(`${API}/words`, {
+export const postWord = (word: Omit<WordDetail, 'level' | 'next_review' | 'interval_minutes' | 'error_count' | 'review_count' | 'history' | 'added'>) => fetch(`${API}/words`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(word)

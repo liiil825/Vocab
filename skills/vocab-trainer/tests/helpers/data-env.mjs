@@ -71,7 +71,7 @@ export function resetTestData() {
   // 创建新的测试数据库
   const db = new Database(TEST_DATA_FILE);
 
-  // 初始化 schema
+  // 初始化 schema v2
   db.exec(`
     CREATE TABLE IF NOT EXISTS words (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,7 +86,7 @@ export function resetTestData() {
       added TEXT NOT NULL,
       level INTEGER DEFAULT 0,
       next_review TEXT NOT NULL,
-      interval_days INTEGER DEFAULT 1,
+      interval_minutes INTEGER DEFAULT 20,
       error_count INTEGER DEFAULT 0,
       review_count INTEGER DEFAULT 0,
       history TEXT DEFAULT '[]',
@@ -97,7 +97,7 @@ export function resetTestData() {
 
     CREATE TABLE IF NOT EXISTS stats (
       id INTEGER PRIMARY KEY DEFAULT 1,
-      version INTEGER DEFAULT 1,
+      version INTEGER DEFAULT 2,
       streak INTEGER DEFAULT 0,
       last_review_date TEXT,
       total_reviews INTEGER DEFAULT 0
@@ -109,7 +109,7 @@ export function resetTestData() {
   `);
 
   // 初始化 stats 行
-  db.query("INSERT INTO stats (id, version, streak, total_reviews) VALUES (1, 1, 0, 0)").run();
+  db.query("INSERT INTO stats (id, version, streak, total_reviews) VALUES (1, 2, 0, 0)").run();
 
   db.close();
 }
@@ -154,7 +154,7 @@ export function writeTestData(data) {
   if (data.words && data.words.length > 0) {
     for (const word of data.words) {
       db.query(`
-        INSERT INTO words (word, word_lower, meaning, phonetic, pos, example, example_cn, source, added, level, next_review, interval_days, error_count, review_count, history, prototype, variant, etymology)
+        INSERT INTO words (word, word_lower, meaning, phonetic, pos, example, example_cn, source, added, level, next_review, interval_minutes, error_count, review_count, history, prototype, variant, etymology)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         word.word,
@@ -168,7 +168,7 @@ export function writeTestData(data) {
         word.added,
         word.level || 0,
         word.next_review,
-        word.interval_days || 1,
+        word.interval_minutes || 20,
         word.error_count || 0,
         word.review_count || 0,
         typeof word.history === 'string' ? word.history : JSON.stringify(word.history || []),
@@ -193,3 +193,15 @@ export function getToday() {
  * 获取 addDays 函数
  */
 export { addDays } from "../../packages/vocab-core/src/algorithm.js";
+
+/**
+ * 获取 addMinutes 函数
+ */
+export { addMinutes } from "../../packages/vocab-core/src/algorithm.js";
+
+/**
+ * 获取当前时刻 (ISO datetime)
+ */
+export function getNow() {
+  return new Date().toISOString();
+}

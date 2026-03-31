@@ -29,7 +29,7 @@ export default function Status() {
     { label: '总复习次数', value: status.total_reviews, color: 'text-text-primary' },
   ];
 
-  const levels = [0, 1, 2, 3, 4, 5];
+  const levels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
   const maxCount = Math.max(...levels.map(l => status.level_stats?.[l] ?? 0), 1);
 
   return (
