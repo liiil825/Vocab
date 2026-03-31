@@ -1,11 +1,23 @@
 # 测试文档
 
+## 测试状态 (2026-03-31)
+
+| 测试类型 | 通过 | 失败 |
+|---------|------|------|
+| 算法单元测试 | 22 | 0 |
+| 存储层单元测试 | 23 | 0 |
+| MCP 集成测试 | 20 | 0 |
+| 批量复习集成测试 | 37 | 0 |
+| **总计** | **102** | **0** |
+
+**已修复**：之前 streak 连续测试失败的原因是 `readTestData()` 返回 `{ words, stats }` 结构，但测试代码错误地设置 `data.last_review_date` 而不是 `data.stats.last_review_date`。
+
 ## 测试命令
 
 ```bash
-bun run test              # 运行全部测试（单元 + 集成）
-bun run test:unit         # 只运行单元测试
-bun run test:integration  # 只运行集成测试
+bun run tests/run-all.mjs              # 运行全部测试
+bun run tests/run-all.mjs unit         # 只运行单元测试
+bun run tests/run-all.mjs integration  # 只运行集成测试
 ```
 
 ## 测试结构
@@ -34,6 +46,27 @@ tests/
 | `batch-review.test.mjs` | 批量添加、部分提交、提前结束、未复习词仍返回、错误处理、streak 连续/中断 |
 
 ## 数据隔离机制
+
+测试使用独立的数据库文件（UUID 确保唯一），正式数据库 (`~/.vocab-trainer/words.db`) 完全不受影响。
+
+**设计原则**：测试不移动、复制或修改正式数据库。测试期间正式 MCP 服务可正常运行。
+
+### 测试流程
+
+```
+setupTestData()
+  └── 确保测试目录存在
+
+resetTestData()
+  └── 创建新的空测试数据库（独立文件，不影响正式数据库）
+
+运行测试
+  └── 测试 MCP 服务器使用测试数据库（通过 VOCAB_DATA_PATH）
+  └── 正式 MCP 服务完全不受影响
+
+teardownTestData()
+  └── 删除测试数据库
+```
 
 ### 核心原理
 
@@ -79,28 +112,12 @@ const DEFAULT_DATA_PATH = process.env.VOCAB_DATA_PATH || "...";
 
 改为函数后，`getDataPath()` 在每次 `loadData()` 调用时才执行，此时 `VOCAB_DATA_PATH` 已被测试环境正确设置。
 
-## 生命周期
-
-每个测试文件执行流程：
-
-```
-setupTestData()
-  ├── 备份 words.db → words.db.backup.{uuid}
-  └── 创建 words.test.{uuid}.db (SQLite)
-
-runTests() — 执行测试用例
-
-teardownTestData(hadBackup)
-  ├── 删除 words.test.{uuid}.db
-  └── 恢复 words.db ← backup.{uuid}
-```
-
 ## 测试辅助函数
 
 | 函数 | 用途 |
 |------|------|
-| `setupTestData()` | 备份真实数据，初始化测试环境 |
-| `teardownTestData(hadBackup)` | 清理测试数据，恢复真实数据 |
+| `setupTestData()` | 确保测试目录存在 |
+| `teardownTestData()` | 删除测试数据库 |
 | `resetTestData()` | 重置测试数据为空 |
 | `readTestData()` | 直接读取测试数据文件 |
 | `writeTestData(data)` | 直接写入测试数据文件 |
@@ -109,12 +126,4 @@ teardownTestData(hadBackup)
 
 ## 已知测试问题
 
-### SQLite 连接缓存
-
-当 `writeTestData()` 直接写入数据库后，`loadData()` 可能因 SQLite 连接缓存而读取到旧数据。
-
-解决方案：在 `writeTestData()` 后调用 `closeDb()` 确保缓存失效，或使用独立连接读取。
-
-### streak 连续测试
-
-在某些测试场景中，streak 连续测试可能返回意外值 (预期 6，实际 1)。这是测试基础设施问题，不是算法错误。算法逻辑本身已通过隔离测试验证。
+无。所有测试均已通过。

@@ -22,7 +22,7 @@ function assert(condition, message) {
 }
 
 async function runTests() {
-  const hadBackup = setupTestData();
+  setupTestData();
   resetTestData();
 
   client = new McpClient({
@@ -109,7 +109,7 @@ async function runTests() {
   assert(detailNonExist.error !== undefined, `不存在的词返回 error`);
 
   client.stop();
-  teardownTestData(hadBackup);
+  teardownTestData();
 
   console.log("\n" + "=".repeat(50));
   console.log(`MCP 集成测试: ✅ ${passed} 通过, ❌ ${failed} 失败`);

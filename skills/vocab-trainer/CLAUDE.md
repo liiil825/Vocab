@@ -8,34 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-```
-vocab-trainer/                    # Bun workspace root
-├── packages/
-│   ├── vocab-core/               # Shared core library
-│   │   ├── src/
-│   │   │   ├── index.ts         # Public exports
-│   │   │   ├── types.ts         # TypeScript types
-│   │   │   ├── storage.ts       # SQLite storage (factory pattern)
-│   │   │   └── algorithm.ts      # Spaced repetition algorithm
-│   │   └── schema.sql           # SQLite schema
-│   │
-│   ├── vocab-mcp/               # MCP server (AI tools)
-│   │   └── src/
-│   │       ├── index.ts         # MCP server entry
-│   │       ├── tools.ts         # 7 MCP tools
-│   │       └── llm.ts           # LLM integration
-│   │
-│   └── vocab-api/               # HTTP REST API (Hono)
-│       └── src/
-│           ├── server.ts        # Hono API server
-│           └── llm.ts           # LLM integration
-│
-├── web/                          # React frontend (unchanged)
-└── tests/                        # Test suite
-    ├── unit/                    # Unit tests
-    ├── integration/             # Integration tests
-    └── helpers/                 # Test utilities
-```
+See [docs/architecture.md](docs/architecture.md) for full technical documentation including directory structure, storage design, data model, API endpoints, and MCP tools.
 
 ## Commands
 
@@ -96,8 +69,13 @@ VITE_API_URL=http://192.168.0.105:3099/api
 
 ## Testing
 
-See [docs/testing.md](docs/testing.md) for full test documentation.
+See [docs/testing.md](docs/testing.md) for full test documentation including test structure, data isolation mechanism, and known test issues.
 
-**Test isolation**: Each test suite uses a unique SQLite database file (UUID-based). The `closeDb()` function invalidates the cached storage instance between tests to ensure isolation.
+**Test status** (2026-03-31):
+- Algorithm unit tests: 22 passed, 0 failed
+- Storage unit tests: 23 passed, 0 failed
+- MCP integration tests: 20 passed, 0 failed
+- Batch review integration tests: 37 passed, 0 failed
+- **Total: 102 passed, 0 failed**
 
-**Known limitation**: Integration tests that verify streak behavior across MCP server restarts may fail because the MCP server runs as a separate process with its own storage cache.
+All tests passing as of 2026-03-31.

@@ -41,7 +41,7 @@ function assert(condition, message) {
 }
 
 async function runTests() {
-  const hadBackup = setupTestData();
+  setupTestData();
   resetTestData();
 
   client = new McpClient({
@@ -151,8 +151,8 @@ async function runTests() {
   // ===== 测试 11: streak 连续复习 =====
   console.log("\n=== 测试 11: streak 连续复习 ===");
   const data1 = readTestData();
-  data1.last_review_date = addDays(getToday(), -1); // 昨天复习过，今天继续，streak 应增加
-  data1.streak = 5;
+  data1.stats.last_review_date = addDays(getToday(), -1); // 昨天复习过，今天继续，streak 应增加
+  data1.stats.streak = 5;
   writeTestData(data1);
   await client.callTool("vocab_add_word", { word: "streaktarget", meaning: "测试" });
   const streakResult = await client.callTool("vocab_review_feedback", {
@@ -163,8 +163,8 @@ async function runTests() {
   // ===== 测试 12: streak 中断 =====
   console.log("\n=== 测试 12: streak 中断 ===");
   const data2 = readTestData();
-  data2.last_review_date = "2026-03-27";
-  data2.streak = 3;
+  data2.stats.last_review_date = "2026-03-27";
+  data2.stats.streak = 3;
   writeTestData(data2);
   const breakResult = await client.callTool("vocab_review_feedback", {
     feedbacks: [{ word: "streaktarget", feedback: "pass" }]
@@ -172,7 +172,7 @@ async function runTests() {
   assert(breakResult.updated_streak === 1, `streak 中断后应重置为 1，实际: ${breakResult.updated_streak}`);
 
   client.stop();
-  teardownTestData(hadBackup);
+  teardownTestData();
 
   console.log("\n" + "=".repeat(50));
   console.log(`批量复习测试: ✅ ${passed} 通过, ❌ ${failed} 失败`);

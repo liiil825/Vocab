@@ -39,7 +39,7 @@ const testWord = {
 };
 
 async function runTests() {
-  const hadBackup = setupTestData();
+  setupTestData();
   resetTestData();
 
   // Get storage instance for tests
@@ -115,7 +115,7 @@ async function runTests() {
   assert(storage.getWordsByFilter("mastered").length === 1, "mastered 筛选: 1 个");
   assert(storage.getWordsByFilter("all").length === 6, `all 筛选: 6 个`);
 
-  teardownTestData(hadBackup);
+  teardownTestData();
 
   console.log("\n" + "=".repeat(50));
   console.log(`存储层测试: ✅ ${passed} 通过, ❌ ${failed} 失败`);

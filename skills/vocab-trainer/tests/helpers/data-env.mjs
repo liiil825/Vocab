@@ -4,8 +4,14 @@
  * 每个测试文件使用独立的测试数据文件（通过 UUID 确保唯一），
  * 配合 storage.ts 的 getDataPath() 函数在运行时读取 VOCAB_DATA_PATH，
  * 实现测试数据与真实数据的完全隔离。
+ *
+ * 测试流程：
+ * 1. setupTestData() - 确保测试目录存在
+ * 2. resetTestData() - 创建空的测试数据库
+ * 3. 运行测试 - 使用独立的测试数据库，正式数据库完全不受影响
+ * 4. teardownTestData() - 删除测试数据库
  */
-import { existsSync, mkdirSync, unlinkSync, renameSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync, cpSync } from "fs";
 import { randomUUID } from "crypto";
 import { Database } from "bun:sqlite";
 import { closeDb } from "../../packages/vocab-core/src/storage.js";
@@ -16,7 +22,6 @@ const DEFAULT_DATA_FILE = `${DATA_DIR}/words.db`;
 // 每个测试套件使用独立的测试数据文件（使用 UUID 确保唯一）
 const TEST_ID = randomUUID();
 export const TEST_DATA_FILE = `${DATA_DIR}/words.test.${TEST_ID}.db`;
-const BACKUP_FILE = `${DATA_DIR}/words.db.backup.${TEST_ID}`;
 
 // 立即设置环境变量，确保在任何模块加载前生效
 process.env.VOCAB_DATA_PATH = TEST_DATA_FILE;
@@ -29,33 +34,25 @@ export function getDataFilePath() {
 }
 
 /**
- * 设置测试环境 - 备份现有数据并创建空的测试数据库
+ * 设置测试环境 - 确保测试目录存在
+ *
+ * 注意：不影响正式数据库，测试使用独立的数据库文件
  */
 export function setupTestData() {
   if (!existsSync(DATA_DIR)) {
     mkdirSync(DATA_DIR, { recursive: true });
   }
-
-  // 备份现有数据
-  if (existsSync(DEFAULT_DATA_FILE)) {
-    renameSync(DEFAULT_DATA_FILE, BACKUP_FILE);
-    return true; // 有备份需要恢复
-  }
-  return false;
 }
 
 /**
- * 清理测试环境 - 删除测试数据并恢复备份
+ * 清理测试环境 - 删除测试数据
+ *
+ * 注意：不恢复任何东西，因为 setupTestData() 没有移动或修改正式数据库
  */
-export function teardownTestData(hadBackup) {
+export function teardownTestData() {
   // 删除测试数据文件
   if (existsSync(TEST_DATA_FILE)) {
     unlinkSync(TEST_DATA_FILE);
-  }
-
-  // 恢复备份（仅当有备份时才恢复）
-  if (hadBackup && existsSync(BACKUP_FILE)) {
-    renameSync(BACKUP_FILE, DEFAULT_DATA_FILE);
   }
 }
 

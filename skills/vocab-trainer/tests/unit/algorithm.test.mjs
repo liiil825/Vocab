@@ -22,7 +22,7 @@ function assert(condition, message) {
 }
 
 async function runTests() {
-  const hadBackup = setupTestData();
+  setupTestData();
   resetTestData();
 
   // Get storage instance for tests
@@ -117,8 +117,8 @@ async function runTests() {
   console.log("\n测试 9: streak 连续复习");
   resetTestData();
   let data = readTestData();
-  data.last_review_date = addDays(getToday(), -1); // 昨天已复习，今天继续，streak 应增加
-  data.streak = 5;
+  data.stats.last_review_date = addDays(getToday(), -1); // 昨天已复习，今天继续，streak 应增加
+  data.stats.streak = 5;
   writeTestData(data);
   // writeTestData 后缓存被清除，需要重新获取新实例
   const storageForTest9 = createStorageFromEnv();
@@ -129,15 +129,15 @@ async function runTests() {
   // 测试 10: streak 中断
   console.log("\n测试 10: streak 中断");
   data = readTestData();
-  data.last_review_date = "2026-03-27"; // 2天前
-  data.streak = 10;
+  data.stats.last_review_date = "2026-03-27"; // 2天前
+  data.stats.streak = 10;
   writeTestData(data);
   // writeTestData 后缓存被清除，需要重新获取新实例
   const storageForTest10 = createStorageFromEnv();
   const breakResult = processReviewFeedbacks(storageForTest10, [{ word: "streaktest", feedback: "pass" }]);
   assert(breakResult.updatedStreak === 1, `中断后 streak 重置为 1，实际: ${breakResult.updatedStreak}`);
 
-  teardownTestData(hadBackup);
+  teardownTestData();
 
   console.log("\n" + "=".repeat(50));
   console.log(`算法测试: ✅ ${passed} 通过, ❌ ${failed} 失败`);

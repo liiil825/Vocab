@@ -1,1 +1,34 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Lock files (use bun.lockb for workspace lock)
+*.lock
+bun.lockb
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# Database (user data)
+*.db
+*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
