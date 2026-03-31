@@ -37,7 +37,7 @@ export default function Button({
       onClick={onClick}
       disabled={disabled}
       className={`
-        font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+        font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer
         ${base[variant]}
         ${sizes[size]}
         ${className}

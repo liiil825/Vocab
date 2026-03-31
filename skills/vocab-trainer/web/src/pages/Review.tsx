@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getReview, postFeedback, getWordEnrich, type EnrichData } from '../api';
+import { playSound } from '../hooks/useSound';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import FadeIn from '../components/motion/FadeIn';
@@ -62,6 +63,7 @@ export default function Review() {
   const handleFeedback = (feedback: 'pass' | 'fail' | 'fuzzy') => {
     if (currentIndex >= words.length) return;
     const word = words[currentIndex];
+    playSound(feedback);
     const newFeedbacks = [...feedbacks, { word: word.word, feedback }];
     setFeedbacks(newFeedbacks);
     setShowAnswer(false);
@@ -138,6 +140,7 @@ export default function Review() {
                 <p className='text-text-muted text-lg mb-6'>{currentWord.phonetic}</p>
               )}
               <Button onClick={() => {
+                playSound('reveal');
                 setShowAnswer(true);
                 if (!enrichedData[currentWord.word]) enrichCurrentWord(currentWord.word);
               }}>
