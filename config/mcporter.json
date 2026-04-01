@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "vocab-trainer": {
-      "command": "bun /home/david/.openclaw/workspace-english-teacher/skills/vocab-trainer/packages/vocab-mcp/src/index.ts"
-    }
-  },
-  "imports": []
-}
