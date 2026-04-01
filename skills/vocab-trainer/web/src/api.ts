@@ -65,6 +65,11 @@ export const postWord = (word: Omit<WordDetail, 'level' | 'next_review' | 'inter
   body: JSON.stringify(word)
 }).then(r => r.json());
 export const deleteWord = (word: string) => fetch(`${API}/words/${encodeURIComponent(word)}`, { method: "DELETE" }).then(r => r.json());
+export const updateWord = (word: string, updates: { meaning?: string; phonetic?: string; pos?: string; example?: string; example_cn?: string; etymology?: string }) => fetch(`${API}/words/${encodeURIComponent(word)}`, {
+  method: "PUT",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(updates)
+}).then(r => r.json());
 
 export type EnrichData = {
   word: string;

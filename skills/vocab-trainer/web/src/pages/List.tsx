@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { getWords, deleteWord } from '../api';
 import Card from '../components/ui/Card';
 import FadeIn from '../components/motion/FadeIn';
+import WordModal from '../components/WordModal';
 
 type WordItem = { word: string; meaning: string; level: number; next_review: string; error_count: number };
 
@@ -18,6 +20,7 @@ export default function List() {
   const [words, setWords] = useState<WordItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -32,6 +35,15 @@ export default function List() {
     if (!confirm(`确定删除 "${w}"？`)) return;
     await deleteWord(w);
     setWords(prev => prev.filter(x => x.word !== w));
+  };
+
+  const handleRefresh = () => {
+    setLoading(true);
+    getWords(filter === 'all' ? undefined : filter).then((data: any) => {
+      setWords(data.words || []);
+      setTotal(data.total || 0);
+      setLoading(false);
+    });
   };
 
   return (
@@ -73,8 +85,10 @@ export default function List() {
                   <span className='text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent'>Lv.{w.level}</span>
                   {w.meaning && <span className='text-text-muted text-sm hidden sm:inline'>{w.meaning.slice(0, 30)}{w.meaning.length > 30 ? '...' : ''}</span>}
                 </div>
-                <div className='flex items-center gap-3'>
-                  <span className='text-text-muted text-xs'>{w.next_review}</span>
+                <div className='flex items-center gap-2'>
+                  <span className='text-text-muted text-xs hidden sm:inline'>{w.next_review}</span>
+                  <button onClick={() => setSelectedWord(w.word)} className='text-text-muted hover:text-accent text-sm transition-colors'>详情</button>
+                  <button onClick={() => setSelectedWord(w.word)} className='text-text-muted hover:text-accent text-sm transition-colors'>编辑</button>
                   <button onClick={() => handleDelete(w.word)} className='text-text-muted hover:text-danger text-sm transition-colors'>删除</button>
                 </div>
               </Card>
@@ -82,6 +96,17 @@ export default function List() {
           ))
         )}
       </div>
+
+      {/* Word Detail/Edit Modal */}
+      <AnimatePresence>
+        {selectedWord && (
+          <WordModal
+            word={selectedWord}
+            onClose={() => setSelectedWord(null)}
+            onUpdated={handleRefresh}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -18,7 +18,7 @@ const app = new Hono();
 
 app.use("*", cors({
   origin: "*",
-  allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type"]
 }));
 
@@ -241,6 +241,28 @@ app.get("/api/words/:word", (c) => {
   }
 
   return c.json(result);
+});
+
+app.put("/api/words/:word", async (c) => {
+  const db = getStorage();
+  const word = c.req.param("word");
+  const body = await c.req.json();
+
+  // Only allow updating certain fields
+  const allowedFields = ['meaning', 'phonetic', 'pos', 'example', 'example_cn', 'etymology'];
+  const updates: Partial<Word> = {};
+  for (const field of allowedFields) {
+    if (body[field] !== undefined) {
+      (updates as any)[field] = body[field];
+    }
+  }
+
+  const result = db.updateWord(word, updates);
+  if (!result) {
+    return c.json({ success: false, message: `未找到单词 "${word}"` }, 404);
+  }
+
+  return c.json({ success: true, message: `已更新 "${word}"` });
 });
 
 app.get("/api/words/:word/enrich", async (c) => {
