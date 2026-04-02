@@ -56,6 +56,8 @@ const ENRICHMENT_EXAMPLES = `
 - 变体要包含常见形式（过去式、进行式、第三人称单数等）
 - 搭配要自然且实用
 - 近义词要有相近的语义和使用场景
+- **en 字段必须是纯英文，不含任何中文字符**
+- **cn 字段必须是纯中文，不含任何英文字母**
 
 ❌ 避免：
 - 例句只是"主语+动词"的空洞结构
@@ -63,6 +65,7 @@ const ENRICHMENT_EXAMPLES = `
 - 变体列表为空或不相关
 - 搭配过于基础（look at, go to）
 - 近义词过于笼统
+- **en 字段混入中文，或 cn 字段混入英文**
 `;
 
 export async function enrichWord(word: string): Promise<EnrichResult> {

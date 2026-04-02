@@ -270,13 +270,13 @@ export default function Review() {
                 {currentWord.pos && <span className='text-accent'>{currentWord.pos}</span>}
               </div>
 
-              {/* Examples */}
-              {currentWord.example && (
+              {/* Examples - show old example only if no enrichment examples available */}
+              {currentWord.example && (!enrich || !enrich.examples || enrich.examples.length === 0) && (
                 <p className='text-text-secondary text-sm border-t border-border pt-3 mt-3'>
                   <span className='text-text-muted'>例句: </span>{currentWord.example}
                 </p>
               )}
-              {currentWord.example_cn && (
+              {currentWord.example_cn && (!enrich || !enrich.examples || enrich.examples.length === 0) && (
                 <p className='text-text-muted text-sm'>{currentWord.example_cn}</p>
               )}
 
