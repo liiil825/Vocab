@@ -98,7 +98,12 @@ export default function Review() {
     if (currentIndex < words.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      postFeedback(newFeedbacks).then(setResult);
+      postFeedback(newFeedbacks)
+        .then(setResult)
+        .catch((err) => {
+          console.error("Failed to submit feedback:", err);
+          alert("提交反馈失败，请重试");
+        });
     }
   };
 
