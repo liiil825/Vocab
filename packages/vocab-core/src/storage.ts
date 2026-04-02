@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { VocabData, Word, ReviewRecord, VariantEntry } from "./types.js";
+import { VocabData, Word, ReviewRecord, VariantEntry, ExampleEntry } from "./types.js";
 
 function getDataPath(): string {
   return process.env.VOCAB_DATA_PATH ||
@@ -30,6 +30,50 @@ function rowToWord(row: any): Word {
     }
   }
 
+  // Parse examples - new JSON array format
+  let examples: ExampleEntry[] = [];
+  if (row.examples) {
+    try {
+      const parsed = JSON.parse(row.examples);
+      examples = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      examples = [];
+    }
+  }
+
+  // Parse collocations
+  let collocations: string[] = [];
+  if (row.collocations) {
+    try {
+      const parsed = JSON.parse(row.collocations);
+      collocations = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      collocations = [];
+    }
+  }
+
+  // Parse synonyms
+  let synonyms: string[] = [];
+  if (row.synonyms) {
+    try {
+      const parsed = JSON.parse(row.synonyms);
+      synonyms = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      synonyms = [];
+    }
+  }
+
+  // Parse antonyms
+  let antonyms: string[] = [];
+  if (row.antonyms) {
+    try {
+      const parsed = JSON.parse(row.antonyms);
+      antonyms = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      antonyms = [];
+    }
+  }
+
   return {
     word: row.word,
     meaning: row.meaning || "",
@@ -37,6 +81,10 @@ function rowToWord(row: any): Word {
     pos: row.pos || "",
     example: row.example || "",
     example_cn: row.example_cn || "",
+    examples,
+    collocations,
+    synonyms,
+    antonyms,
     source: row.source || "user",
     added: row.added,
     level: row.level,
@@ -64,7 +112,7 @@ export interface StorageConnection {
   getWordsByFilter(filter?: string): Word[];
   getDueWords(): Word[];
   updateStats(streak: number, lastReviewDate: string): void;
-  updateWordEnrich(word: string, enrich: { prototype: string; variant: VariantEntry[]; etymology: string }): void;
+  updateWordEnrich(word: string, enrich: { prototype: string; variant: VariantEntry[]; etymology: string; examples: ExampleEntry[]; collocations: string[]; synonyms: string[]; antonyms: string[] }): void;
   updateReviewBatchTime(time: string): void;
   close(): void;
 }
@@ -90,6 +138,10 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
       pos TEXT DEFAULT '',
       example TEXT DEFAULT '',
       example_cn TEXT DEFAULT '',
+      examples TEXT DEFAULT '[]',
+      collocations TEXT DEFAULT '[]',
+      synonyms TEXT DEFAULT '[]',
+      antonyms TEXT DEFAULT '[]',
       source TEXT DEFAULT 'user',
       added TEXT NOT NULL,
       level INTEGER DEFAULT 0,
@@ -122,6 +174,16 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
     db.exec("ALTER TABLE words ADD COLUMN prototype TEXT DEFAULT ''");
     db.exec("ALTER TABLE words ADD COLUMN variant TEXT DEFAULT ''");
     db.exec("ALTER TABLE words ADD COLUMN etymology TEXT DEFAULT ''");
+  } catch {
+    // Columns may already exist
+  }
+
+  // Migrate new enrichment columns
+  try {
+    db.exec("ALTER TABLE words ADD COLUMN examples TEXT DEFAULT '[]'");
+    db.exec("ALTER TABLE words ADD COLUMN collocations TEXT DEFAULT '[]'");
+    db.exec("ALTER TABLE words ADD COLUMN synonyms TEXT DEFAULT '[]'");
+    db.exec("ALTER TABLE words ADD COLUMN antonyms TEXT DEFAULT '[]'");
   } catch {
     // Columns may already exist
   }
@@ -176,8 +238,8 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
 
     addWord(word: Word): void {
       db.query(`
-        INSERT INTO words (word, word_lower, meaning, phonetic, pos, example, example_cn, source, added, level, next_review, interval_minutes, error_count, review_count, history, prototype, variant, etymology)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO words (word, word_lower, meaning, phonetic, pos, example, example_cn, examples, collocations, synonyms, antonyms, source, added, level, next_review, interval_minutes, error_count, review_count, history, prototype, variant, etymology)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         word.word,
         word.word.toLowerCase(),
@@ -186,6 +248,10 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         word.pos,
         word.example,
         word.example_cn,
+        JSON.stringify(word.examples || []),
+        JSON.stringify(word.collocations || []),
+        JSON.stringify(word.synonyms || []),
+        JSON.stringify(word.antonyms || []),
         word.source,
         word.added,
         word.level,
@@ -218,7 +284,8 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
       db.query(`
         UPDATE words SET
           word = ?, word_lower = ?, meaning = ?, phonetic = ?, pos = ?,
-          example = ?, example_cn = ?, source = ?, added = ?, level = ?,
+          example = ?, example_cn = ?, examples = ?, collocations = ?, synonyms = ?, antonyms = ?,
+          source = ?, added = ?, level = ?,
           next_review = ?, interval_minutes = ?, error_count = ?, review_count = ?, history = ?,
           prototype = ?, variant = ?, etymology = ?
         WHERE word_lower = ?
@@ -230,6 +297,10 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
         updated.pos,
         updated.example,
         updated.example_cn,
+        JSON.stringify(updated.examples || []),
+        JSON.stringify(updated.collocations || []),
+        JSON.stringify(updated.synonyms || []),
+        JSON.stringify(updated.antonyms || []),
         updated.source,
         updated.added,
         updated.level,
@@ -298,11 +369,20 @@ export function createStorage(config: { dbPath?: string } = {}): StorageConnecti
       `).run(streak, lastReviewDate);
     },
 
-    updateWordEnrich(word: string, enrich: { prototype: string; variant: VariantEntry[]; etymology: string }): void {
+    updateWordEnrich(word: string, enrich: { prototype: string; variant: VariantEntry[]; etymology: string; examples: ExampleEntry[]; collocations: string[]; synonyms: string[]; antonyms: string[] }): void {
       db.query(`
-        UPDATE words SET prototype = ?, variant = ?, etymology = ?
+        UPDATE words SET prototype = ?, variant = ?, etymology = ?, examples = ?, collocations = ?, synonyms = ?, antonyms = ?
         WHERE word_lower = ?
-      `).run(enrich.prototype, JSON.stringify(enrich.variant || []), enrich.etymology, word.toLowerCase());
+      `).run(
+        enrich.prototype,
+        JSON.stringify(enrich.variant || []),
+        enrich.etymology,
+        JSON.stringify(enrich.examples || []),
+        JSON.stringify(enrich.collocations || []),
+        JSON.stringify(enrich.synonyms || []),
+        JSON.stringify(enrich.antonyms || []),
+        word.toLowerCase()
+      );
     },
 
     updateReviewBatchTime(time: string): void {

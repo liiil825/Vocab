@@ -196,6 +196,10 @@ app.post("/api/words", async (c) => {
     pos: body.pos || "",
     example: body.example || "",
     example_cn: body.example_cn || "",
+    examples: body.examples || [],
+    collocations: body.collocations || [],
+    synonyms: body.synonyms || [],
+    antonyms: body.antonyms || [],
     source: body.source || "user",
     added: now,
     level: 0,
@@ -204,9 +208,9 @@ app.post("/api/words", async (c) => {
     error_count: 0,
     review_count: 0,
     history: [],
-    prototype: "",
-    variant: "",
-    etymology: ""
+    prototype: body.prototype || "",
+    variant: body.variant || [],
+    etymology: body.etymology || ""
   };
 
   db.addWord(newWord);
@@ -249,7 +253,12 @@ app.put("/api/words/:word", async (c) => {
   const body = await c.req.json();
 
   // Only allow updating certain fields
-  const allowedFields = ['meaning', 'phonetic', 'pos', 'example', 'example_cn', 'etymology'];
+  const allowedFields = [
+    'meaning', 'phonetic', 'pos',
+    'example', 'example_cn',
+    'examples', 'collocations', 'synonyms', 'antonyms',
+    'prototype', 'variant', 'etymology'
+  ];
   const updates: Partial<Word> = {};
   for (const field of allowedFields) {
     if (body[field] !== undefined) {
@@ -271,12 +280,16 @@ app.get("/api/words/:word/enrich", async (c) => {
   const existing = db.getWord(word);
 
   // If word exists in DB and has all enrich fields, return from DB
-  if (existing && existing.prototype && existing.variant && existing.etymology) {
+  if (existing && existing.prototype && existing.variant && existing.etymology && existing.examples?.length > 0) {
     return c.json({
       word,
       prototype: existing.prototype,
       variant: existing.variant,
       etymology: existing.etymology,
+      examples: existing.examples,
+      collocations: existing.collocations || [],
+      synonyms: existing.synonyms || [],
+      antonyms: existing.antonyms || [],
       cached: true
     });
   }

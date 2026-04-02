@@ -13,11 +13,20 @@ export type WordDetail = WordSummary & {
   pos: string;
   example: string;
   example_cn: string;
+  examples: ExampleEntry[];
+  collocations: string[];
+  synonyms: string[];
+  antonyms: string[];
   source: string;
   added: string;
   interval_minutes: number;
   review_count: number;
   history: { date: string; result: string }[];
+}
+
+export type ExampleEntry = {
+  en: string;
+  cn: string;
 }
 
 export type Status = {
@@ -76,6 +85,10 @@ export type EnrichData = {
   prototype: string;
   variant: VariantEntry[];
   etymology: string;
+  examples: ExampleEntry[];
+  collocations: string[];
+  synonyms: string[];
+  antonyms: string[];
 }
 
 export type VariantEntry = {

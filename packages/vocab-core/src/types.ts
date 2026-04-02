@@ -8,13 +8,24 @@ export interface VariantEntry {
   value: string; // e.g., "walked", "walking"
 }
 
+export interface ExampleEntry {
+  en: string;   // 英文例句
+  cn: string;   // 中文翻译
+}
+
 export interface Word {
   word: string;
   meaning: string;
   phonetic: string;
   pos: string;
+  // Legacy single example fields (for backward compatibility)
   example: string;
   example_cn: string;
+  // New rich fields
+  examples: ExampleEntry[];     // 3个例句（中英对照）
+  collocations: string[];       // 常见搭配
+  synonyms: string[];          // 近义词
+  antonyms: string[];          // 反义词
   source: string;
   added: string;
   level: number;              // 0-9
@@ -105,4 +116,8 @@ export interface EnrichResult {
   prototype: string;
   variant: VariantEntry[];
   etymology: string;
+  examples: ExampleEntry[];
+  collocations: string[];
+  synonyms: string[];
+  antonyms: string[];
 }

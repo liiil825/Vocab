@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getReview, postFeedback, getWordEnrich, getNextReview, type EnrichData } from '../api';
+import { getReview, postFeedback, getWordEnrich, getNextReview, type EnrichData, type ExampleEntry } from '../api';
 import { playSound } from '../hooks/useSound';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -15,6 +15,10 @@ type WordDetail = {
   pos: string;
   example: string;
   example_cn: string;
+  examples: ExampleEntry[];
+  collocations: string[];
+  synonyms: string[];
+  antonyms: string[];
   source: string;
   added: string;
   level: number;
@@ -280,9 +284,55 @@ export default function Review() {
               {enrichLoading && <p className='text-text-muted text-sm italic py-2'>正在获取扩展信息...</p>}
               {!enrichLoading && enrich && (
                 <div className='border-t border-border pt-3 mt-3 space-y-3'>
-                  {enrich.prototype && (
+                  {/* 3 Examples */}
+                  {enrich.examples && enrich.examples.length > 0 && (
+                    <div className='pl-3 py-2 border-l-2 border-accent bg-accent/5 rounded-r'>
+                      <div className='text-xs text-accent uppercase tracking-wider font-medium mb-2'>例句</div>
+                      {enrich.examples.map((ex: ExampleEntry, i: number) => (
+                        <div key={i} className='mb-2 last:mb-0'>
+                          <p className='text-text-primary text-sm'>{ex.en}</p>
+                          <p className='text-text-muted text-xs'>{ex.cn}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Collocations */}
+                  {enrich.collocations && enrich.collocations.length > 0 && (
+                    <div className='pl-3 py-2 border-l-2 border-orange-500 bg-orange-500/5 rounded-r'>
+                      <div className='text-xs text-orange-500 uppercase tracking-wider font-medium mb-2'>常见搭配</div>
+                      <div className='flex flex-wrap gap-1'>
+                        {enrich.collocations.map((col: string, i: number) => (
+                          <span key={i} className='px-2 py-0.5 bg-orange-500/10 text-orange-400 text-xs rounded-full'>{col}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Synonyms */}
+                  {enrich.synonyms && enrich.synonyms.length > 0 && (
                     <div className='pl-3 py-2 border-l-2 border-blue-500 bg-blue-500/5 rounded-r'>
-                      <div className='text-xs text-blue-500 uppercase tracking-wider font-medium mb-1'>原型</div>
+                      <div className='text-xs text-blue-500 uppercase tracking-wider font-medium mb-2'>近义词</div>
+                      <div className='flex flex-wrap gap-1'>
+                        {enrich.synonyms.map((syn: string, i: number) => (
+                          <span key={i} className='px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs rounded-full'>{syn}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Antonyms */}
+                  {enrich.antonyms && enrich.antonyms.length > 0 && (
+                    <div className='pl-3 py-2 border-l-2 border-red-500 bg-red-500/5 rounded-r'>
+                      <div className='text-xs text-red-500 uppercase tracking-wider font-medium mb-2'>反义词</div>
+                      <div className='flex flex-wrap gap-1'>
+                        {enrich.antonyms.map((ant: string, i: number) => (
+                          <span key={i} className='px-2 py-0.5 bg-red-500/10 text-red-400 text-xs rounded-full'>{ant}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Prototype */}
+                  {enrich.prototype && (
+                    <div className='pl-3 py-2 border-l-2 border-cyan-500 bg-cyan-500/5 rounded-r'>
+                      <div className='text-xs text-cyan-500 uppercase tracking-wider font-medium mb-1'>词根</div>
                       <p className='text-text-primary text-sm'>{enrich.prototype}</p>
                     </div>
                   )}

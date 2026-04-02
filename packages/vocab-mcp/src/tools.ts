@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Word, createStorageFromEnv } from "vocab-core";
 import { getNow, addMinutes, processReviewFeedbacks } from "vocab-core/algorithm";
+import { lemmatize } from "vocab-core/lemmatizer";
 import type { StorageConnection } from "vocab-core/storage";
 
 // Create shared storage instance for the MCP server
@@ -55,11 +56,22 @@ function createTools(): Tool[] {
         pos: z.string().optional(),
         example: z.string().optional(),
         example_cn: z.string().optional(),
+        examples: z.array(z.object({ en: z.string(), cn: z.string() })).optional(),
+        collocations: z.array(z.string()).optional(),
+        synonyms: z.array(z.string()).optional(),
+        antonyms: z.array(z.string()).optional(),
+        prototype: z.string().optional(),
+        variant: z.array(z.object({ form: z.string(), value: z.string() })).optional(),
+        etymology: z.string().optional(),
         source: z.string().optional()
       },
       execute: async (args: any) => {
         const db = getStorage();
-        const wordLower = args.word.toLowerCase();
+
+        // Lemmatize the word to its base form
+        const lemma = lemmatize(args.word);
+        const wordLower = lemma.toLowerCase();
+
         const existing = db.loadData().words.find(
           w => w.word.toLowerCase() === wordLower
         );
@@ -67,10 +79,10 @@ function createTools(): Tool[] {
         if (existing) {
           return {
             success: false,
-            word: args.word,
+            word: existing.word,
             level: existing.level,
             next_review: existing.next_review,
-            message: `单词 "${args.word}" 已存在，当前 level: ${existing.level}`
+            message: `单词 "${existing.word}" 已存在，当前 level: ${existing.level}`
           };
         }
 
@@ -84,6 +96,10 @@ function createTools(): Tool[] {
           pos: args.pos || "",
           example: args.example || "",
           example_cn: args.example_cn || "",
+          examples: args.examples || [],
+          collocations: args.collocations || [],
+          synonyms: args.synonyms || [],
+          antonyms: args.antonyms || [],
           source: args.source || "user",
           added: now,
           level: 0,
@@ -92,19 +108,19 @@ function createTools(): Tool[] {
           error_count: 0,
           review_count: 0,
           history: [],
-          prototype: "",
-          variant: "",
-          etymology: ""
+          prototype: args.prototype || "",
+          variant: args.variant || [],
+          etymology: args.etymology || ""
         };
 
         db.addWord(newWord);
 
         return {
           success: true,
-          word: args.word,
+          word: wordLower,
           level: 0,
           next_review: firstReview,
-          message: `已添加 "${args.word}"，可立即复习`
+          message: `已添加 "${wordLower}"，可立即复习`
         };
       }
     },
@@ -121,9 +137,16 @@ function createTools(): Tool[] {
       },
       execute: async (args: any) => {
         const db = getStorage();
+
+        // Lemmatize all feedback words to match stored lemma
+        const lemmatizedFeedbacks = args.feedbacks.map((f: any) => ({
+          word: lemmatize(f.word),
+          feedback: f.feedback
+        }));
+
         const { results, summary, updatedStreak } = processReviewFeedbacks(
           db,
-          args.feedbacks
+          lemmatizedFeedbacks
         );
 
         return {
@@ -201,10 +224,12 @@ function createTools(): Tool[] {
       },
       execute: async (args: any) => {
         const db = getStorage();
-        const success = db.removeWord(args.word);
+        // Lemmatize to find the word
+        const lemma = lemmatize(args.word);
+        const success = db.removeWord(lemma);
         return {
           success,
-          message: success ? `已移除 "${args.word}"` : `未找到 "${args.word}"`
+          message: success ? `已移除 "${lemma}"` : `未找到 "${args.word}"`
         };
       }
     },
@@ -218,7 +243,9 @@ function createTools(): Tool[] {
       },
       execute: async (args: any) => {
         const db = getStorage();
-        const word = db.getWord(args.word);
+        // Lemmatize to find the word
+        const lemma = lemmatize(args.word);
+        const word = db.getWord(lemma);
         if (!word) {
           return { error: `未找到单词 "${args.word}"` };
         }

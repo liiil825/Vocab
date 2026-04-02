@@ -69,13 +69,17 @@ mcporter config add vocab-trainer --stdio "bun /home/david/.openclaw/workspace-e
 ```sql
 CREATE TABLE words (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  word TEXT NOT NULL UNIQUE,
+  word TEXT NOT NULL UNIQUE,           -- 单词原型（小写存储）
   word_lower TEXT NOT NULL,
   meaning TEXT DEFAULT '',
   phonetic TEXT DEFAULT '',
   pos TEXT DEFAULT '',
-  example TEXT DEFAULT '',
-  example_cn TEXT DEFAULT '',
+  example TEXT DEFAULT '',              -- 兼容字段（单个例句）
+  example_cn TEXT DEFAULT '',            -- 兼容字段
+  examples TEXT DEFAULT '[]',           -- JSON数组: [{en, cn}, ...] 3个例句
+  collocations TEXT DEFAULT '[]',       -- JSON数组: ["常见搭配1", ...]
+  synonyms TEXT DEFAULT '[]',           -- JSON数组: ["近义词1", ...]
+  antonyms TEXT DEFAULT '[]',           -- JSON数组: ["反义词1", ...]
   source TEXT DEFAULT 'user',
   added TEXT NOT NULL,
   level INTEGER DEFAULT 0,              -- 0-9
@@ -84,9 +88,9 @@ CREATE TABLE words (
   error_count INTEGER DEFAULT 0,
   review_count INTEGER DEFAULT 0,
   history TEXT DEFAULT '[]',
-  prototype TEXT DEFAULT '',
-  variant TEXT DEFAULT '',
-  etymology TEXT DEFAULT ''
+  prototype TEXT DEFAULT '',            -- 词根（英文）
+  variant TEXT DEFAULT '',              -- 变体JSON: [{form, value}]
+  etymology TEXT DEFAULT ''             -- 词源（中文）
 );
 
 CREATE TABLE stats (
@@ -103,12 +107,16 @@ CREATE TABLE stats (
 
 | 字段              | 说明                                          |
 | ----------------- | --------------------------------------------- |
-| `word`            | 单词本身（小写存储）                          |
+| `word`            | 单词原型（小写存储）                          |
 | `meaning`         | 中文释义                                      |
 | `phonetic`        | 音标（如 `/ˈspeərɪŋli/`）                     |
 | `pos`             | 词性 (n/v/adj/adv/prep/conj/phrase)           |
-| `example`         | 含该词的英文例句                              |
-| `example_cn`      | 例句中文翻译                                  |
+| `example`         | 含该词的英文例句（兼容性保留）                 |
+| `example_cn`      | 例句中文翻译（兼容性保留）                     |
+| `examples`        | 3个例句数组: [{en, cn}, ...]                  |
+| `collocations`    | 常见搭配数组: ["scrutinize closely", ...]     |
+| `synonyms`        | 近义词数组: ["examine", "inspect", ...]        |
+| `antonyms`        | 反义词数组: ["ignore", "overlook", ...]        |
 | `source`          | 来源（用户手动添加 / /eng 分析 / 阅读材料等） |
 | `added`           | 添加时间 (ISO8601 datetime)                   |
 | `level`           | 掌握等级 0-9                                  |
@@ -174,15 +182,36 @@ CREATE TABLE stats (
 
 **处理步骤：**
 
-1. 读取数据库 `~/.vocab-trainer/words.db`
-2. 解析用户输入，提取待添加的单词（逗号分隔或自然语言句子）
-3. 对每个单词：
-   - 查询音标、词性、中文释义
-   - 构造一条英文例句和中文翻译
-   - 检查是否已存在（小写匹配），存在则跳过并提示
-   - 设置 `level=0`，`next_review=立即可复习`，`interval_minutes=20`
-4. 追加写入数据库
-5. 输出确认信息
+1. 解析用户输入，提取待添加的单词（逗号分隔或自然语言句子）
+2. **Lemmatization（词形还原）**：将每个单词还原为原型
+   - "foundations" → "foundation"
+   - "tricks" → "trick"
+   - "running" → "run"
+3. 检查是否已存在（通过 lemmatized form 匹配），存在则跳过并提示
+4. 调用 LLM 获取单词的 enrichment 信息（见下方）
+5. 调用 `vocab_add_word` 添加单词，传入完整 enrichment 数据
+6. 输出确认信息
+
+**vocab_add_word 参数更新（支持 enrichment）：**
+
+```typescript
+vocab_add_word({
+  word: string,           // 原型形式（必填）
+  meaning?: string,       // 中文释义
+  phonetic?: string,      // 音标
+  pos?: string,           // 词性
+  example?: string,        // 英文例句（兼容性保留）
+  example_cn?: string,     // 例句翻译（兼容性保留）
+  examples?: [{en, cn}],   // 3个例句数组
+  collocations?: string[], // 常见搭配
+  synonyms?: string[],     // 近义词
+  antonyms?: string[],     // 反义词
+  prototype?: string,      // 词根（英文）
+  variant?: [{form, value}], // 变体数组
+  etymology?: string,      // 词源（中文）
+  source?: string
+})
+```
 
 **输出格式（单个词）：**
 
@@ -346,13 +375,53 @@ CREATE TABLE stats (
 **处理步骤：**
 
 1. 解析用户输入，提取要学习的单词（支持逗号分隔多个）
-2. 对每个单词，查询并展示完整学习卡片
-3. **关键步骤：** 学习结束后，调用 `vocab_add_word` 检查词是否已存在
-4. 根据检查结果显示不同的确认信息：
+2. **Lemmatization（词形还原）**：将每个单词还原为原型
+   - "foundations" → "foundation"
+   - "tricks" → "trick"
+3. 对每个单词，调用 LLM 获取完整学习信息（见下方 prompt）
+4. 展示学习卡片给用户
+5. **关键步骤：** 学习结束后，调用 `vocab_add_word` 添加/检查词
+   - 传入完整 enrichment 数据（examples, collocations, synonyms, antonyms, prototype, variant, etymology）
+6. 根据检查结果显示不同的确认信息：
    - **vocab_add_word 返回 success=true（新词）** → "✅ 已加入复习队列，首次复习：明天"
    - **vocab_add_word 返回 success=false（已存在，且 meaning 非空）** → "⚠️ 该词已在词库中（level X），下次复习：明天"
    - **vocab_add_word 返回 success=false（已存在，但 meaning 为空）** → "✅ 已加入复习队列，首次复习：明天"（信息不完整，当新词处理）
-5. 如果词库中已存在该词，仍展示学习卡片并根据 level 显示不同提示
+7. 如果词库中已存在该词，仍展示学习卡片并根据 level 显示不同提示
+
+**Learn 模式 LLM Prompt（获取 enrichment）：**
+
+当需要为单词生成学习内容时，使用以下 prompt 格式：
+
+```
+分析单词 "{word}"，返回高质量JSON格式扩展信息：
+
+{
+  "phonetic": "/fəˈnetɪk/",        // 音标
+  "pos": "adj",                    // 词性 (n/v/adj/adv/prep/conj)
+  "meaning": "中文释义",            // 中文释义
+  "examples": [                    // 3个例句（中英对照）
+    {"en": "例句1", "cn": "翻译1"},
+    {"en": "例句2", "cn": "翻译2"},
+    {"en": "例句3", "cn": "翻译3"}
+  ],
+  "collocations": ["搭配1", "搭配2", "搭配3"],  // 常见搭配
+  "synonyms": ["近义词1", "近义词2"],           // 近义词
+  "antonyms": ["反义词1"],                     // 反义词（如有）
+  "prototype": "scrutin- (查看) + -ize (使...)", // 词根分解
+  "variant": [                                // 变体
+    {"form": "过去式", "value": "scrutinized"},
+    {"form": "进行式", "value": "scrutinizing"}
+  ],
+  "etymology": "源自拉丁语 scrutari（仔细检查），16世纪进入英语"  // 词源
+}
+
+⚠️ 质量要求：
+- 例句必须包含单词在真实语境中的使用，句子内容各不相同
+- 词根词源要有来源（拉丁语/希腊语/古英语等）和历史时期
+- 变体要包含常见形式（过去式、进行式、第三人称单数等）
+- 搭配要自然且实用
+- 近义词要有相近的语义和使用场景
+```
 
 **输出格式（单个词）：**
 
