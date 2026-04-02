@@ -3,6 +3,7 @@ import { Word, createStorageFromEnv } from "vocab-core";
 import { getNow, addMinutes, processReviewFeedbacks } from "vocab-core/algorithm";
 import { lemmatize } from "vocab-core/lemmatizer";
 import type { StorageConnection } from "vocab-core/storage";
+import { enrichWord } from "./llm.js";
 
 // Create shared storage instance for the MCP server
 let storage: StorageConnection | null = null;
@@ -115,12 +116,23 @@ function createTools(): Tool[] {
 
         db.addWord(newWord);
 
+        // Enrich the word with LLM-generated data
+        let enrichment = null;
+        try {
+          enrichment = await enrichWord(wordLower);
+          db.updateWordEnrich(wordLower, enrichment);
+        } catch (err) {
+          // Enrichment failed, continue without it
+          console.error(`Enrichment failed for ${wordLower}:`, err);
+        }
+
         return {
           success: true,
           word: wordLower,
           level: 0,
           next_review: firstReview,
-          message: `已添加 "${wordLower}"，可立即复习`
+          message: `已添加 "${wordLower}"，可立即复习`,
+          enrichment
         };
       }
     },
