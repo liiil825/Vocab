@@ -373,15 +373,14 @@ vocab_add_word({
 2. **Lemmatization（词形还原）**：将每个单词还原为原型
    - "foundations" → "foundation"
    - "tricks" → "trick"
-3. 调用 `vocab_get_word_detail` 获取单词详情
-   - 如果词库中已存在该词且有 enrichment 数据，直接返回
-   - 如果词库中不存在或无 enrichment 数据，`vocab_add_word` 会自动调用 LLM 生成完整 enrichment 并存储
-4. 展示学习卡片给用户（包含 enrichment 返回的 examples, collocations, synonyms, antonyms, prototype, variant, etymology）
-5. 根据检查结果显示不同的确认信息：
-   - **vocab_add_word 返回 success=true（新词）** → "✅ 已加入复习队列，首次复习：明天"
-   - **vocab_add_word 返回 success=false（已存在，且 meaning 非空）** → "⚠️ 该词已在词库中（level X），下次复习：明天"
-   - **vocab_add_word 返回 success=false（已存在，但 meaning 为空）** → "✅ 已加入复习队列，首次复习：明天"（信息不完整，当新词处理）
-6. 如果词库中已存在该词，仍展示学习卡片并根据 level 显示不同提示
+3. 调用 `vocab_add_word` 添加单词
+   - 如果词库中已存在该词，返回已存在信息
+   - 如果词库中不存在，`vocab_add_word` 会自动调用 LLM 生成完整 enrichment 并存储
+4. 调用 `vocab_get_word_detail` 获取完整单词详情（含 enrichment 数据）
+5. 展示学习卡片给用户（包含 examples, collocations, synonyms, antonyms, prototype, variant, etymology）
+6. 根据 `vocab_add_word` 结果显示确认信息：
+   - **success=true（新词）** → "✅ 已加入复习队列，首次复习：明天"
+   - **success=false（已存在）** → "⚠️ 该词已在词库中（level X），下次复习：明天"
 
 **注意：** enrichment 数据的生成（examples, collocations, synonyms, antonyms, prototype, variant, etymology）由 `vocab_add_word` MCP 工具自动完成，无需手动调用 LLM。
 
