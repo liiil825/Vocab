@@ -21,6 +21,9 @@ bun run dev:mcp            # Run MCP server (packages/vocab-mcp/src/index.ts)
 bun run dev:api            # Run HTTP API (packages/vocab-api/src/server.ts)
 bun run dev:web            # Run React frontend
 
+# Start all services (recommended - loads env vars from scripts/.env)
+bash scripts/dev.sh        # API + MCP + Web in parallel
+
 # Test
 bun run test               # Run all tests (unit + integration)
 bun run test:unit          # Unit tests only
@@ -31,6 +34,8 @@ bun run tests/run-all.mjs              # All tests
 bun run tests/run-all.mjs unit         # Unit tests only
 bun run tests/run-all.mjs integration  # Integration tests only
 ```
+
+**Important**: Always use `bash scripts/dev.sh` to start services - it loads environment variables (MINIMAX_API_KEY, etc.) from `scripts/.env`. Starting directly with `bun run dev:api` will fail due to missing env vars.
 
 ## LAN Access
 
