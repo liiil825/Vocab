@@ -478,7 +478,19 @@ export function lemmatize(word: string): string {
   }
 
   // -ness (noun suffix)
+  // Skip for words ending in "-liness" (loneliness, hairliness) as it's "-ly" + "-ness"
+  // Skip for "harness" which ends with "-ness" letters but is a base word
+  // Skip for "emptiness" (should be "empty", not "empti")
+  // For other words ending in -ness preceded by consonant 'r' (like wilderness, clearness), keep as-is to avoid wrong stems
   if (original.endsWith('ness') && original.length > 4) {
+    const beforeNess = original[original.length - 5];
+    if (original.endsWith('liness') || original === 'harness' || original === 'emptiness') {
+      return original;  // Don't strip
+    }
+    // Don't strip if beforeNess is 'r' and stripping would create a non-word
+    if (beforeNess === 'r') {
+      return original;  // likely not a productive -ness suffix (e.g., wilderness, clearness)
+    }
     return original.slice(0, -4);
   }
 

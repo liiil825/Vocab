@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { Word, createStorageFromEnv } from "vocab-core";
 import { getNow, addMinutes, processReviewFeedbacks } from "vocab-core/algorithm";
-import { lemmatize } from "vocab-core/lemmatizer";
 import type { StorageConnection } from "vocab-core/storage";
 import { enrichWord } from "./llm.js";
 
@@ -69,9 +68,8 @@ function createTools(): Tool[] {
       execute: async (args: any) => {
         const db = getStorage();
 
-        // Lemmatize the word to its base form
-        const lemma = lemmatize(args.word);
-        const wordLower = lemma.toLowerCase();
+        // Use word as-is (lowercased), LLM will handle correct form via enrichment
+        const wordLower = args.word.toLowerCase().trim();
 
         const existing = db.loadData().words.find(
           w => w.word.toLowerCase() === wordLower
@@ -150,15 +148,15 @@ function createTools(): Tool[] {
       execute: async (args: any) => {
         const db = getStorage();
 
-        // Lemmatize all feedback words to match stored lemma
-        const lemmatizedFeedbacks = args.feedbacks.map((f: any) => ({
-          word: lemmatize(f.word),
+        // Pass feedback words as-is (user sees exact words from database)
+        const feedbacks = args.feedbacks.map((f: any) => ({
+          word: f.word.toLowerCase().trim(),
           feedback: f.feedback
         }));
 
         const { results, summary, updatedStreak } = processReviewFeedbacks(
           db,
-          lemmatizedFeedbacks
+          feedbacks
         );
 
         return {
@@ -236,12 +234,11 @@ function createTools(): Tool[] {
       },
       execute: async (args: any) => {
         const db = getStorage();
-        // Lemmatize to find the word
-        const lemma = lemmatize(args.word);
-        const success = db.removeWord(lemma);
+        const wordLower = args.word.toLowerCase().trim();
+        const success = db.removeWord(wordLower);
         return {
           success,
-          message: success ? `已移除 "${lemma}"` : `未找到 "${args.word}"`
+          message: success ? `已移除 "${wordLower}"` : `未找到 "${args.word}"`
         };
       }
     },
@@ -255,9 +252,8 @@ function createTools(): Tool[] {
       },
       execute: async (args: any) => {
         const db = getStorage();
-        // Lemmatize to find the word
-        const lemma = lemmatize(args.word);
-        const word = db.getWord(lemma);
+        const wordLower = args.word.toLowerCase().trim();
+        const word = db.getWord(wordLower);
         if (!word) {
           return { error: `未找到单词 "${args.word}"` };
         }
