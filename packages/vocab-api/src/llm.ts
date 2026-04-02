@@ -115,7 +115,7 @@ ${ENRICHMENT_EXAMPLES}
   let jsonStr = content.trim();
   const jsonMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
   if (jsonMatch) {
-    jsonMatch[1].trim();
+    jsonStr = jsonMatch[1].trim();
   }
 
   try {
