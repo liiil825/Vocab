@@ -258,9 +258,22 @@ function stripVerbSuffix(word: string): string {
   // -ing -> (e) or drop doubling
   // Only strip -ing if the result is a meaningful word (length >= 5)
   // This prevents breaking adverbs like "sparingly" -> "spar"
-  // and participles like "interesting" -> "interest"
   if (word.endsWith('ing') && word.length > 4) {
-    const base = word.slice(0, -3);
+    let base = word.slice(0, -3);  // running -> runn
+
+    // If base ends with doubled consonant (e.g., "runn"), undouble it
+    if (base.length >= 3) {
+      const lastTwo = base.slice(-2);
+      if (lastTwo[0] === lastTwo[1] && isConsonant(lastTwo[0])) {
+        // Check if this would create a valid word
+        const undoubled = base.slice(0, -1);  // runn -> run
+        // Only undouble if result is at least 3 chars
+        if (undoubled.length >= 3) {
+          base = undoubled;
+        }
+      }
+    }
+
     // If base is too short (<= 4 chars), it's likely not a verb
     if (base.length <= 4) {
       return word;
@@ -306,14 +319,12 @@ function undoubleConsonant(word: string): string {
   if (word.length < 3) return word;
 
   const lastTwo = word.slice(-2);
-  const secondLast = lastTwo[0];
   const last = lastTwo[1];
 
-  // If last two are same consonant (not vowel), and preceded by single consonant
-  if (last === secondLast && isConsonant(last)) {
-    const thirdLast = word.length >= 3 ? word[word.length - 3] : '';
-    // Only undouble if preceded by single consonant and vowel (e.g., "run" + "n" = "runn")
-    if (thirdLast && isConsonant(thirdLast) && !isConsonant(word[word.length - 4] || '')) {
+  // If last two chars are same consonant (e.g., "nn", "tt", "ss"), undouble
+  if (lastTwo[0] === last && isConsonant(last)) {
+    // Only undouble if word is long enough (prevents breaking short words like "inn")
+    if (word.length >= 4) {
       return word.slice(0, -1);
     }
   }
