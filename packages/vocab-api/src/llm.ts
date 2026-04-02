@@ -88,6 +88,7 @@ ${ENRICHMENT_EXAMPLES}
     },
     body: JSON.stringify({
       model,
+      max_tokens: 8000,
       messages: [
         { role: "system", name: "MiniMax AI", content: "你是一个专业的英语词汇学家，为单词生成高质量学习材料。" },
         { role: "user", name: "用户", content: prompt }
